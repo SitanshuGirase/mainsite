@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Photon Academy</title>
+<meta name="robots" content="noindex">
+<script>
+/* GitHub Pages fallback: a direct visit to /mainsite/faculty has no file, so this page hands the
+   path to index.html, which restores the clean URL before anything shows.
+   KEEP = 1 because this site lives at sitanshugirase.github.io/mainsite/ (a project site).
+   If you later move to your own domain or a user site, change it to 0. */
+(function () {
+  var KEEP = 1, l = location;
+  var parts = l.pathname.replace(/^\//, '').split('/');
+  var base = '/' + parts.slice(0, KEEP).join('/') + (KEEP ? '/' : '');
+  var rest = parts.slice(KEEP).join('/');
+  if (/^admin\/?$/.test(rest)) { l.replace(base + 'admin.html' + l.search + l.hash); return; }
+  l.replace(l.protocol + '//' + l.host + base + '?/' + rest.replace(/&/g, '~and~') +
+            (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') + l.hash);
+})();
+</script>
+</head>
+<body style="background:#0b1220;color:#eef2fb;font-family:system-ui,sans-serif;text-align:center;padding:3rem">
+<noscript><p>Please enable JavaScript, or <a href="/mainsite/" style="color:#4fd6e8">open the home page</a>.</p></noscript>
+</body>
+</html>
