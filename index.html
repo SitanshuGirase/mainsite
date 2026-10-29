@@ -3,11 +3,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<script>try{var __t=localStorage.getItem("photon-theme");if(__t==="light"||__t==="dark")document.documentElement.setAttribute("data-theme",__t)}catch(e){}</script>
+<script>var __t=null;try{__t=localStorage.getItem("photon-theme")}catch(e){}if(__t!=="dark")document.documentElement.setAttribute("data-theme","light")</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Photon Academy — Ankleshwar | Class 6th-12th CBSE, ICSE, GSEB + JEE, NEET & Olympiad Coaching</title>
 <meta name="description" content="The Photon Academy in Ankleshwar GIDC offers concept-based coaching for Class 6th to 12th (CBSE, ICSE, GSEB) plus JEE, NEET, Olympiad and other competitive exam preparation, led by Director Naveen Sachan Sir, with 15+ years of teaching experience, and a dedicated faculty team.">
-<meta name="theme-color" content="#0b1220">
+<meta name="theme-color" content="#f3f6fb">
 <link rel="preconnect" href="https://unmvqhniprhdijiazfmu.supabase.co">
 <link rel="preconnect" href="https://unmvqhniprhdijiazfmu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -552,18 +552,7 @@ body[data-page="home"] .hdr-quick.hq-dup{display:none!important}
   <div class="sidebar-foot" data-i18n="sbFoot">Sardar Park, Ganesh Plaza-1, Ankleshwar GIDC, Gujarat – 393002</div>
 </aside>
 
-<div class="swipe-hint" id="swipeHint" aria-hidden="true">
-  <div class="swipe-hint-pill">
-    <span class="swipe-hand-wrap">
-      <span class="swipe-ripple"></span>
-      <svg class="swipe-hand" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 11.5V6a1.5 1.5 0 0 1 3 0v4.5M12 10.5V5a1.5 1.5 0 0 1 3 0v5.5M15 10.5V6.5a1.5 1.5 0 0 1 3 0V13a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.2-3l-1.8-3.1a1.4 1.4 0 0 1 2.3-1.6L8 13"/>
-      </svg>
-    </span>
-    <span class="swipe-chevrons"><i>&rsaquo;</i><i>&rsaquo;</i><i>&rsaquo;</i></span>
-    <span class="swipe-hint-text">Swipe from left edge</span>
-  </div>
-</div>
+<button type="button" class="swipe-hint" id="swipeHint" aria-label="Open menu"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
 
 <header class="nav">
   <div class="nav-inner">
@@ -2669,7 +2658,7 @@ body[data-page="home"] .hdr-quick.hq-dup{display:none!important}
   /* Mobile swipe-from-edge opens the sidebar; swipe-left closes it.
      While the finger is down, the sidebar follows it for a live drag feel;
      on release it snaps open or closed depending on distance travelled. */
-  const EDGE_ZONE=20, OPEN_THRESHOLD=70;  /* EDGE_ZONE = how many pixels from the left edge a swipe must start in */
+  const OPEN_THRESHOLD=70;  /* how far (px) a swipe must travel to open/close the menu */
   let sx=0,sy=0,dragMode=null,dragging=false;
   function sidebarW(){ return sidebar.getBoundingClientRect().width||300; }
   function inSideScroll(el){
@@ -2689,11 +2678,9 @@ body[data-page="home"] .hdr-quick.hq-dup{display:none!important}
        belongs to that thing: the menu gesture skips it completely. */
     if(!isOpen && inSideScroll(e.target)){ dragMode=null; dragging=false; return; }
     /* Nothing here calls preventDefault, so normal taps, links and scrolling stay unaffected. */
-    /* Menu is closed: only a swipe that STARTS inside the left EDGE_ZONE (20px) may open it.
-       A swipe anywhere else (for example on a horizontal table) is left alone.
-       Menu is open: a swipe left closes it, as before. */
-    if(!isOpen) dragMode=(sx<=EDGE_ZONE)?'open':null;
-    else dragMode='close';
+    /* Menu closed: a rightward swipe from ANYWHERE on the screen opens it.
+       Menu open: a swipe left closes it. */
+    dragMode=isOpen?'close':'open';
     dragging=false;
   },{passive:true});
   document.addEventListener('touchmove',e=>{
@@ -2702,6 +2689,7 @@ body[data-page="home"] .hdr-quick.hq-dup{display:none!important}
     if(!dragging){
       if(Math.abs(dy)>Math.abs(dx)+8){ dragMode=null; return; } /* vertical scroll intent */
       if(Math.abs(dx)<6) return;
+      if(dragMode==='open' && dx<0){ dragMode=null; return; } /* only a rightward swipe opens the menu */
       dragging=true;
       sidebar.classList.add('dragging','open');
       overlay && overlay.classList.add('dragging','open');
@@ -3532,6 +3520,25 @@ h1:focus,h2:focus,h3:focus,main:focus,section:focus,[tabindex="-1"]:focus{outlin
 nav.links a.active{box-shadow:none!important;background:rgba(255,255,255,.07)!important}
 .ss-top.active,.ss-top:focus-visible{box-shadow:none!important}
 .page-indicator .page-dot,.photon-announcements-head .dot,.copy-btn:hover,.copy-btn:focus-visible{box-shadow:none!important}
+/* arrowhead tab (phones): replaces the old "swipe" pill */
+.swipe-hint{position:fixed;left:0;top:50%;transform:translateY(-50%)!important;width:20px;height:54px;padding:0;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.16);border-left:0;border-radius:0 14px 14px 0;background:rgba(15,23,42,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#cfe3f0;opacity:1!important;pointer-events:auto!important;cursor:pointer;z-index:245;transition:opacity .25s ease}
+body.sidebar-open .swipe-hint{opacity:0!important;pointer-events:none!important}
+html[data-theme="light"] .swipe-hint{background:rgba(255,255,255,.94)!important;border-color:rgba(15,27,51,.14);color:#0e7490;box-shadow:0 6px 18px rgba(15,27,51,.12)}
+/* slide bar under tables (phones only) */
+.tbl-bar{display:none}
+@media (max-width:700px){.tbl-bar:not([hidden]){display:block;padding:8px 2px 2px}}
+.tbl-bar input[type=range]{-webkit-appearance:none;appearance:none;display:block;width:100%;height:24px;margin:0;background:transparent;touch-action:pan-y;cursor:pointer}
+.tbl-bar input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:rgba(255,255,255,.18)}
+.tbl-bar input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:56px;height:18px;margin-top:-6px;border-radius:9px;background:#67e8f9;border:0;box-shadow:0 1px 5px rgba(0,0,0,.3)}
+.tbl-bar input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:rgba(255,255,255,.18)}
+.tbl-bar input[type=range]::-moz-range-thumb{width:56px;height:18px;border-radius:9px;background:#67e8f9;border:0}
+html[data-theme="light"] .tbl-bar input[type=range]::-webkit-slider-runnable-track{background:rgba(15,27,51,.14)}
+html[data-theme="light"] .tbl-bar input[type=range]::-webkit-slider-thumb{background:#0e7490;box-shadow:0 1px 5px rgba(15,27,51,.3)}
+html[data-theme="light"] .tbl-bar input[type=range]::-moz-range-track{background:rgba(15,27,51,.14)}
+html[data-theme="light"] .tbl-bar input[type=range]::-moz-range-thumb{background:#0e7490}
+.tbl-scroll{display:block;width:100%;min-width:0;max-width:100%;contain:inline-size;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl-scroll table{display:table!important;width:max-content!important;min-width:100%;max-width:none!important}
+@media (min-width:921px){.swipe-hint{display:none!important}}
 /* phone fixes */
 .hbtn{white-space:nowrap}
 @media (max-width:920px){
@@ -3574,6 +3581,45 @@ nav.links a.active{box-shadow:none!important;background:rgba(255,255,255,.07)!im
   });
 })();
 </script>
+<script id="photon-tablebar">
+/* Phones: every table that is wider than the screen gets a slide bar underneath it. */
+(function () {
+  var mq = window.matchMedia('(max-width:700px)');
+  function build(wrap) {
+    if (wrap.dataset.tbar) return;
+    wrap.dataset.tbar = '1';
+    var bar = document.createElement('div'); bar.className = 'tbl-bar'; bar.hidden = true;
+    var inp = document.createElement('input');
+    inp.type = 'range'; inp.min = '0'; inp.max = '1000'; inp.value = '0'; inp.step = '1';
+    inp.setAttribute('aria-label', 'Slide the table left and right');
+    bar.appendChild(inp); wrap.insertAdjacentElement('afterend', bar);
+    function room() { return wrap.scrollWidth - wrap.clientWidth; }
+    function sync() { var m = room(); bar.hidden = !(mq.matches && m > 6); if (!bar.hidden) inp.value = m > 0 ? Math.round(wrap.scrollLeft / m * 1000) : 0; }
+    inp.addEventListener('input', function () { wrap.scrollLeft = (inp.value / 1000) * room(); });
+    wrap.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync);
+    if (window.ResizeObserver) { var ro = new ResizeObserver(sync); ro.observe(wrap); var t = wrap.querySelector('table'); if (t) ro.observe(t); }
+    sync();
+  }
+  function scan() {
+    document.querySelectorAll('table').forEach(function (t) {
+      if (t.closest('.photon-table-wrap, .tbl-scroll')) return;
+      var w = document.createElement('div'); w.className = 'tbl-scroll';
+      t.parentNode.insertBefore(w, t); w.appendChild(t);
+    });
+    document.querySelectorAll('.photon-table-wrap, .tbl-scroll').forEach(build);
+  }
+  var timer = 0;
+  function later() { clearTimeout(timer); timer = setTimeout(scan, 150); }
+  new MutationObserver(later).observe(document.body, { childList: true, subtree: true });
+  if (mq.addEventListener) mq.addEventListener('change', later);
+  later();
+  /* the arrowhead tab opens the menu when tapped */
+  var tab = document.getElementById('swipeHint'), burger = document.getElementById('sidebarToggle');
+  if (tab && burger) tab.addEventListener('click', function () { burger.click(); });
+})();
+</script>
+<script src="photon-documents.js" defer></script>
 <script id="photon-heroquick">
 /* Collects the extra links the admin added (forms, new pages, header buttons) and shows them in the home hero.
    Everything the hero buttons already show is skipped, so nothing appears twice. */
@@ -3816,7 +3862,6 @@ html[data-theme="light"] .contact-side a:not(.btn){color:#0e7490!important}
 html[data-theme="light"] :is(.location-card,.loc-info) a:not(.btn){color:#0e7490!important}
 html[data-theme="light"] .btn-primary,html[data-theme="light"] .location-card a.btn-primary,html[data-theme="light"] .loc-info a.btn-primary{background:#0e7490;color:#fff!important}
 html[data-theme="light"] .btn-primary:hover{background:#0b5f78}
-html[data-theme="light"] .swipe-hint{background:rgba(15,27,51,.9)!important;color:#eef2fb;border-color:rgba(255,255,255,.18)}
 /*LIGHT-END*/
 </style>
 <script id="photon-icons">
