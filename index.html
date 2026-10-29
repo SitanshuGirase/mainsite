@@ -4,10 +4,24 @@
 <head>
 <meta charset="UTF-8">
 <script>var __t=null;try{__t=localStorage.getItem("photon-theme")}catch(e){}if(__t!=="dark")document.documentElement.setAttribute("data-theme","light")</script>
+<style id="photon-critical">
+/* first-paint colours: the saved theme is applied before anything is drawn, so there is no flash of the other colour */
+html{background:#0b1220;color-scheme:dark}
+html[data-theme="light"]{background:#f3f6fb;color-scheme:light}
+html[data-theme="light"] body{background:#f3f6fb;color:#0f1b33}
+html[data-theme="light"] .bg-loop{background:#f3f6fb}
+html[data-theme="light"] .bg-loop i{mix-blend-mode:normal;opacity:.2!important}
+html[data-theme="light"] #photon-loader{background:radial-gradient(circle at 50% 38%,#ffffff 0%,#f3f6fb 62%);color:#0f1b33}
+html[data-theme="light"] #photon-loader .pl-track{stroke:rgba(15,27,51,.1)}
+html[data-theme="light"] #photon-loader .pl-quote{color:rgba(15,27,51,.72)}
+html[data-theme="light"] #photon-loader .pl-logo{box-shadow:0 6px 20px rgba(15,27,51,.18)}
+html[data-theme="light"] #photon-loader .pl-spin{filter:drop-shadow(0 0 6px rgba(14,116,144,.25))}
+</style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Photon Academy — Ankleshwar | Class 6th-12th CBSE, ICSE, GSEB + JEE, NEET & Olympiad Coaching</title>
 <meta name="description" content="The Photon Academy in Ankleshwar GIDC offers concept-based coaching for Class 6th to 12th (CBSE, ICSE, GSEB) plus JEE, NEET, Olympiad and other competitive exam preparation, led by Director Naveen Sachan Sir, with 15+ years of teaching experience, and a dedicated faculty team.">
 <meta name="theme-color" content="#f3f6fb">
+<script>if(document.documentElement.getAttribute("data-theme")!=="light")document.querySelector('meta[name="theme-color"]').setAttribute("content","#0b1220")</script>
 <link rel="preconnect" href="https://unmvqhniprhdijiazfmu.supabase.co">
 <link rel="preconnect" href="https://unmvqhniprhdijiazfmu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
