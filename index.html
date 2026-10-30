@@ -2675,12 +2675,6 @@ body[data-page="home"] .hdr-quick.hq-dup{display:none!important}
   const OPEN_THRESHOLD=70;  /* how far (px) a swipe must travel to open/close the menu */
   let sx=0,sy=0,dragMode=null,dragging=false;
   function sidebarW(){ return sidebar.getBoundingClientRect().width||300; }
-  function inSideScroll(el){
-    for(let n=el; n && n!==document.body && n!==document.documentElement; n=n.parentElement){
-      if(n.scrollWidth>n.clientWidth+1){ const ox=getComputedStyle(n).overflowX; if(ox==='auto'||ox==='scroll') return true; }
-    }
-    return false;
-  }
   document.addEventListener('touchstart',e=>{
     if(window.innerWidth>920) return;
     /* Ignore touches on typing/selection controls so the swipe-to-open
@@ -2688,9 +2682,6 @@ body[data-page="home"] .hdr-quick.hq-dup{display:none!important}
     if(e.target.closest && e.target.closest('input,textarea,select,[contenteditable="true"]')){ dragMode=null; dragging=false; return; }
     const t=e.touches[0]; sx=t.clientX; sy=t.clientY;
     const isOpen=body.classList.contains('sidebar-open');
-    /* A touch that starts on something that scrolls sideways (a table, a long formula, a row of chips)
-       belongs to that thing: the menu gesture skips it completely. */
-    if(!isOpen && inSideScroll(e.target)){ dragMode=null; dragging=false; return; }
     /* Nothing here calls preventDefault, so normal taps, links and scrolling stay unaffected. */
     /* Menu closed: a rightward swipe from ANYWHERE on the screen opens it.
        Menu open: a swipe left closes it. */
@@ -3500,7 +3491,7 @@ nav.links a:not([data-i18n]):not(.nav-student-space){display:none!important}
 .hero-quick a{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:#dbe6f7;font-size:13.5px;font-weight:600;text-decoration:none}
 .hero-quick a:hover{background:rgba(255,255,255,.14);color:#fff}
 /* assistant tables: keep a readable width so they swipe sideways instead of being squeezed */
-.photon-message .photon-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:rgba(103,232,249,.4) transparent}
+.photon-message .photon-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:rgba(103,232,249,.4) transparent}
 .photon-message .photon-table-wrap table{display:table!important;width:max-content!important;min-width:100%;max-width:none!important;border-collapse:collapse}
 .photon-message .photon-table-wrap th,.photon-message .photon-table-wrap td{min-width:104px;max-width:280px;padding:9px 11px;overflow-wrap:normal;word-break:normal;vertical-align:top;text-align:left}
 /* hero blends into the site background (orbs show through) instead of sitting in black bands */
@@ -3540,7 +3531,14 @@ body.sidebar-open .swipe-hint{opacity:0!important;pointer-events:none!important}
 html[data-theme="light"] .swipe-hint{background:rgba(255,255,255,.94)!important;border-color:rgba(15,27,51,.14);color:#0e7490;box-shadow:0 6px 18px rgba(15,27,51,.12)}
 /* slide bar under tables (phones only) */
 .tbl-bar{display:none}
-@media (max-width:700px){.tbl-bar:not([hidden]){display:block;padding:8px 2px 2px}}
+@media (max-width:920px){
+  .tbl-bar:not([hidden]){display:block;padding:8px 2px 2px}
+  /* sideways scrolling is done with the slide bar, so a swipe on the table itself belongs to the menu */
+  [data-tbar]{touch-action:pan-y!important}
+  #student-space .week[data-tbar]{scroll-snap-type:none!important}
+  #student-space .ss-jump{flex-wrap:wrap;overflow:visible}
+}
+#student-space .tbl-bar input[type=range],html[data-theme="light"] #student-space .tbl-bar input[type=range]{border:0!important;background:transparent!important;padding:0!important;box-shadow:none!important;height:24px!important;margin:0!important}
 .tbl-bar input[type=range]{-webkit-appearance:none;appearance:none;display:block;width:100%;height:24px;margin:0;background:transparent;touch-action:pan-y;cursor:pointer}
 .tbl-bar input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:rgba(255,255,255,.18)}
 .tbl-bar input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:56px;height:18px;margin-top:-6px;border-radius:9px;background:#67e8f9;border:0;box-shadow:0 1px 5px rgba(0,0,0,.3)}
@@ -3598,7 +3596,7 @@ html[data-theme="light"] .tbl-bar input[type=range]::-moz-range-thumb{background
 <script id="photon-tablebar">
 /* Phones: every table that is wider than the screen gets a slide bar underneath it. */
 (function () {
-  var mq = window.matchMedia('(max-width:700px)');
+  var mq = window.matchMedia('(max-width:920px)');
   function build(wrap) {
     if (wrap.dataset.tbar) return;
     wrap.dataset.tbar = '1';
@@ -3621,7 +3619,7 @@ html[data-theme="light"] .tbl-bar input[type=range]::-moz-range-thumb{background
       var w = document.createElement('div'); w.className = 'tbl-scroll';
       t.parentNode.insertBefore(w, t); w.appendChild(t);
     });
-    document.querySelectorAll('.photon-table-wrap, .tbl-scroll').forEach(build);
+    document.querySelectorAll('.photon-table-wrap, .tbl-scroll, #student-space .week').forEach(build);
   }
   var timer = 0;
   function later() { clearTimeout(timer); timer = setTimeout(scan, 150); }
@@ -3876,6 +3874,8 @@ html[data-theme="light"] .contact-side a:not(.btn){color:#0e7490!important}
 html[data-theme="light"] :is(.location-card,.loc-info) a:not(.btn){color:#0e7490!important}
 html[data-theme="light"] .btn-primary,html[data-theme="light"] .location-card a.btn-primary,html[data-theme="light"] .loc-info a.btn-primary{background:#0e7490;color:#fff!important}
 html[data-theme="light"] .btn-primary:hover{background:#0b5f78}
+html[data-theme="light"] #student-space .wk7 i{background:rgba(15,27,51,.16)}
+html[data-theme="light"] #student-space .wk7 i.on{background:#f08a1c;box-shadow:0 0 6px rgba(240,138,28,.45)}
 /*LIGHT-END*/
 </style>
 <script id="photon-icons">
