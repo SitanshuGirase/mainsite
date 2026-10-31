@@ -93,6 +93,27 @@
     '.pa-note{flex:1 1 100%;margin-top:2px}',
     '.pa-banner{padding:10px 12px;border-radius:10px;background:rgba(245,185,66,.12);border:1px solid rgba(245,185,66,.4);font-size:13.5px;margin:10px 0}',
     '.pa-empty{opacity:.7;padding:14px 0;font-size:14px}',
+    '.pa-lbl{font-size:12.5px;opacity:.85;margin:12px 0 6px}',
+    '#ss-root .cal .cell{position:relative}',
+    '.pa-dot{position:absolute;top:5px;right:5px;width:9px;height:9px;border-radius:50%;border:1px solid rgba(0,0,0,.4);display:block}',
+    '.pa-dot.s{position:static;display:inline-block;margin-right:5px;vertical-align:-1px}',
+    '.pa-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;opacity:.85;margin-top:10px}',
+    '.pa-dayatt{margin-top:6px;font-size:13.5px}',
+    '.pa-pick{display:flex;gap:7px;flex-wrap:wrap}',
+    '.pa-card .pa-pchip{border:1px solid rgba(255,255,255,.22);background:transparent;color:inherit;border-radius:99px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;width:auto !important;margin:0 !important}',
+    '.pa-card .pa-pchip.on{background:rgba(79,214,232,.2);border-color:#4fd6e8;font-weight:600}',
+    '.pa-card .pa-pchip.all{border-style:dashed}',
+    'html[data-theme="light"] .pa-card{background:rgba(255,255,255,.7);border-color:rgba(15,30,60,.16)}',
+    'html[data-theme="light"] .pa-card .pa-btn,html[data-theme="light"] .pa-card .pa-pchip,html[data-theme="light"] .pa-seg button{border-color:rgba(15,30,60,.32)}',
+    'html[data-theme="light"] .pa-card .pa-btn.on,html[data-theme="light"] .pa-card .pa-pchip.on{background:rgba(0,120,150,.14);border-color:#0b7a8f;color:#06303a}',
+    'html[data-theme="light"] .pa-card .pa-btn.pri{background:#0b7a8f;border-color:#0b7a8f;color:#fff}',
+    'html[data-theme="light"] .pa-in{background:#fff;border-color:rgba(15,30,60,.3);color:#0b1220}',
+    'html[data-theme="light"] .pa-row,html[data-theme="light"] .pa-table td,html[data-theme="light"] .pa-table th{border-bottom-color:rgba(15,30,60,.14)}',
+    'html[data-theme="light"] .pa-track{background:rgba(15,30,60,.12)}',
+    'html[data-theme="light"] .pa-chip{border-color:rgba(15,30,60,.22);background:rgba(15,30,60,.04)}',
+    'html[data-theme="light"] .pa-msg.ok{color:#0a7d4f}html[data-theme="light"] .pa-msg.bad{color:#c62828}',
+    '.pa-more{margin-top:8px;flex:1 1 100%}.pa-more summary{cursor:pointer;font-size:13px;opacity:.85;margin-bottom:6px}',
+    '.pa-card h3.pa-head{margin:18px 0 2px;padding-top:6px}',
     '.pa-detail td{background:rgba(255,255,255,.03);white-space:normal}'
   ].join('\n');
   document.head.appendChild(css);
@@ -249,10 +270,43 @@
   }
   function field(label, input) { return el('label', {}, label, input); }
 
+  /* ---------- multi-class picker (chips) ---------- */
+  function classPicker(classes) {
+    var on = classes.map(function (c, i) { return i === 0; });
+    var wrap = el('div', { class: 'pa-pick', role: 'group', 'aria-label': 'Classes' });
+    function isEveryone(c) { return !c.f.board && !c.f.division; }
+    function fire() { wrap.dispatchEvent(new Event('change')); }
+    function paint() {
+      clear(wrap);
+      var every = classes.map(function (c, i) { return i; }).filter(function (i) { return isEveryone(classes[i]); });
+      var allOn = every.length > 0 && every.every(function (i) { return on[i]; });
+      wrap.appendChild(el('button', { type: 'button', class: 'pa-pchip all' + (allOn ? ' on' : ''), 'aria-pressed': allOn ? 'true' : 'false',
+        onclick: function () { every.forEach(function (i) { on[i] = !allOn; }); paint(); fire(); } }, (allOn ? '\u2713 ' : '') + 'All classes'));
+      var subs = [];
+      function chip(c, i) {
+        return el('button', { type: 'button', class: 'pa-pchip' + (on[i] ? ' on' : ''), 'aria-pressed': on[i] ? 'true' : 'false',
+          onclick: function () { on[i] = !on[i]; paint(); fire(); } }, (on[i] ? '\u2713 ' : '') + c.label);
+      }
+      classes.forEach(function (c, i) { if (isEveryone(c)) wrap.appendChild(chip(c, i)); else subs.push(chip(c, i)); });
+      if (subs.length) {
+        var anySub = classes.some(function (c, i) { return !isEveryone(c) && on[i]; });
+        var det = el('details', { class: 'pa-more' }, el('summary', {}, 'Narrow by board or division'), el('div', { class: 'pa-pick' }, subs));
+        if (anySub || wrap._open) det.open = true;
+        det.addEventListener('toggle', function () { wrap._open = det.open; });
+        wrap.appendChild(det);
+      }
+    }
+    wrap._filters = function () { return classes.filter(function (c, i) { return on[i]; }).map(function (c) { return c.f; }); };
+    wrap._key = function () { return on.map(function (x) { return x ? 1 : 0; }).join(''); };
+    wrap._set = function (k) { on = k.split('').map(function (x) { return x === '1'; }); paint(); };
+    paint();
+    return wrap;
+  }
+
   /* ---------- mark a register ---------- */
   function markPane(me, classes) {
     var admin = me.role === 'admin';
-    var cls = classSelect(classes, false);
+    var cls = classPicker(classes);
     var date = el('input', { type: 'date', class: 'pa-in', value: me.today, max: me.today, min: addDays(me.today, -(admin ? 365 : me.teacher_edit_days)) });
     var subject = el('input', { class: 'pa-in', list: 'pa-subjects', placeholder: 'Full day', maxlength: '40', style: 'width:150px' });
     var list = el('datalist', { id: 'pa-subjects' }, ['Physics', 'Chemistry', 'Maths', 'Biology', 'English', 'Science', 'Social Science'].map(function (s) { return el('option', { value: s }); }));
@@ -262,24 +316,29 @@
     var summary = el('span', { class: 'pa-muted' });
     var data = null, dirty = false, seq = 0;
 
-    function filter() { return cls._filter(); }
-    function paramsOf() { var f = filter(); return { date: date.value, subject: subject.value.trim(), class_name: f.class_name, board: f.board, division: f.division }; }
+    function base() { return { date: date.value, subject: subject.value.trim() }; }
 
     async function load() {
       var my = ++seq;
       data = null; saveBtn.disabled = true; allBtn.disabled = true; // nothing can be saved while the register is loading
       msg(out, ''); clear(body).appendChild(el('div', { class: 'pa-empty' }, 'Loading\u2026'));
       try {
-        var d = await call('/api/register' + qs(paramsOf()));
+        var groups = cls._filters();
+        if (!groups.length) { clear(body).appendChild(el('div', { class: 'pa-empty' }, 'Tap one or more classes above to see their students.')); return; }
+        var res = await Promise.all(groups.map(function (f) { return call('/api/register' + qs(Object.assign(base(), f))); }));
         if (my !== seq) return;
-        data = d; dirty = false; draw();
+        var seenIds = {}, all = [];
+        res.forEach(function (r, gi) { r.students.forEach(function (st) { if (seenIds[st.id]) return; seenIds[st.id] = 1; st._g = gi; all.push(st); }); });
+        all.sort(function (a, b) { return (Number(a.class_name) - Number(b.class_name)) || String(a.class_name).localeCompare(String(b.class_name)) || String(a.board || '').localeCompare(String(b.board || '')) || String(a.division || '').localeCompare(String(b.division || '')) || a.name.localeCompare(b.name); });
+        data = { students: all, groups: groups, editable: res.every(function (r) { return r.editable; }), date: res[0].date, today: res[0].today };
+        dirty = false; draw();
       } catch (e) { if (my === seq) { clear(body).appendChild(el('div', { class: 'pa-empty' }, e.message)); data = null; } }
     }
-    var last = { c: cls.value, d: date.value, s: subject.value };
+    var last = { c: cls._key(), d: date.value, s: subject.value };
     function onChange() {
-      if (cls.value === last.c && date.value === last.d && subject.value.trim() === last.s.trim()) return; // nothing really changed
-      if (dirty && !window.confirm('You have unsaved changes. Discard them?')) { cls.value = last.c; date.value = last.d; subject.value = last.s; return; }
-      last = { c: cls.value, d: date.value, s: subject.value };
+      if (cls._key() === last.c && date.value === last.d && subject.value.trim() === last.s.trim()) return; // nothing really changed
+      if (dirty && !window.confirm('You have unsaved changes. Discard them?')) { cls._set(last.c); date.value = last.d; subject.value = last.s; return; }
+      last = { c: cls._key(), d: date.value, s: subject.value };
       load();
     }
     [cls, date, subject].forEach(function (c) { c.addEventListener('change', onChange); });
@@ -304,7 +363,11 @@
           : 'This date is locked. Teachers can change the last ' + me.teacher_edit_days + ' days; ask an admin to change older dates.'));
       }
       saveBtn.disabled = locked; allBtn.disabled = locked;
-      data.students.forEach(function (s, i) {
+      var lastHead = null, n = 0;
+      data.students.forEach(function (s) {
+        var head = 'Class ' + (s.class_name || '?') + (s.board ? ' \u00B7 ' + s.board : '') + (s.division ? ' \u00B7 Division ' + s.division : '');
+        if (head !== lastHead) { lastHead = head; n = 0; body.appendChild(el('h3', { class: 'pa-head' }, head)); }
+        var i = n++;
         var seg = el('div', { class: 'pa-seg' });
         var noteRow = el('input', { class: 'pa-in pa-note', maxlength: '200', placeholder: 'Note (optional)', style: s.note ? '' : 'display:none', value: s.note || '' });
         noteRow.addEventListener('input', function () { s.note = noteRow.value; dirty = true; });
@@ -338,17 +401,29 @@
       if (!data || !data.editable) return;
       saveBtn.disabled = true; msg(out, 'Saving\u2026');
       try {
-        var p = paramsOf();
-        var r = await call('/api/register', { method: 'PUT', body: { date: p.date, subject: p.subject, class_name: p.class_name, board: p.board, division: p.division,
-          records: data.students.map(function (s) { return { student_id: s.id, status: s.status || null, note: s.note || '' }; }) } });
-        msg(out, 'Saved. ' + r.saved + ' marked' + (r.cleared ? ', ' + r.cleared + ' cleared' : '') + '.', 'ok');
+        var b = base(), saved = 0, cleared = 0, done = [];
+        for (var gi = 0; gi < data.groups.length; gi++) {
+          var f = data.groups[gi];
+          var mine = data.students.filter(function (s) { return s._g === gi; });
+          if (!mine.length) continue;
+          var label = 'Class ' + f.class_name + (f.board ? ' \u00B7 ' + f.board : '') + (f.division ? ' \u00B7 ' + f.division : '');
+          try {
+            var r = await call('/api/register', { method: 'PUT', body: { date: b.date, subject: b.subject, class_name: f.class_name, board: f.board, division: f.division,
+              records: mine.map(function (s) { return { student_id: s.id, status: s.status || null, note: s.note || '' }; }) } });
+            saved += r.saved; cleared += r.cleared; done.push(label);
+          } catch (e) {
+            throw new Error((done.length ? 'Saved: ' + done.join(', ') + '. ' : 'Nothing was saved. ') + 'Could not save ' + label + ': ' + e.message + ' Fix it and press Save again.');
+          }
+        }
+        msg(out, 'Saved. ' + saved + ' marked' + (cleared ? ', ' + cleared + ' cleared' : '') + '.', 'ok');
         dirty = false; await load(); msg(out, 'Saved.', 'ok');
       } catch (e) { msg(out, e.message, 'bad'); }
       saveBtn.disabled = !(data && data.editable);
     });
 
     var pane = el('div', {},
-      el('div', { class: 'pa-bar' }, field('Class', cls), field('Date', date), field('Subject', subject), list),
+      el('div', { class: 'pa-lbl' }, 'Classes (tap to select one or more)'), cls,
+      el('div', { class: 'pa-bar' }, field('Date', date), field('Subject', subject), list),
       el('div', { class: 'pa-bar', style: 'margin-top:0' }, allBtn, summary),
       body, el('div', { class: 'pa-bar' }, saveBtn), out);
     load();
@@ -446,6 +521,71 @@
     return body;
   }
 
+  /* ---------- attendance dots on the student's calendar ---------- */
+  var calData = {}, calMe = null, PRI = { absent: 4, late: 3, excused: 2, present: 1 };
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function calMonthKey(label) {
+    var now = new Date().getFullYear();
+    for (var y = now - 2; y <= now + 1; y++) for (var m = 0; m < 12; m++) {
+      if (new Date(y, m, 1).toLocaleDateString([], { month: 'long', year: 'numeric' }) === label) return y + '-' + pad2(m + 1);
+    }
+    return null;
+  }
+  async function loadCalMonth(key) {
+    calData[key] = 'loading';
+    try {
+      if (!calMe) calMe = await call('/api/me');
+      var y = Number(key.slice(0, 4)), m = Number(key.slice(5));
+      var last = y + '-' + pad2(m) + '-' + pad2(new Date(y, m, 0).getDate());
+      var to = last > calMe.today ? calMe.today : last, from = key + '-01';
+      var map = {};
+      if (from <= to) {
+        var d = await call('/api/my' + qs({ from: from, to: to }));
+        d.records.forEach(function (r) { (map[r.date] = map[r.date] || []).push(r); });
+      }
+      calData[key] = map;
+    } catch (e) { calData[key] = {}; }
+    decorateCal();
+  }
+  function decorateCal() {
+    var root = document.getElementById('ss-root');
+    if (!root || !root.querySelector('#pa-student')) return;
+    var g = root.querySelector('.cal'); if (!g) return;
+    var box = g.parentNode, nav = box.querySelector('.cnav b'); if (!nav) return;
+    var key = calMonthKey(nav.textContent.trim()); if (!key) return;
+    if (!calData[key]) { loadCalMonth(key); return; }
+    if (calData[key] === 'loading') return;
+    var map = calData[key];
+    g.querySelectorAll('button.cell').forEach(function (cell) {
+      var dn = cell.querySelector('.dn'); if (!dn) return;
+      var date = key + '-' + pad2(parseInt(dn.textContent, 10)), recs = map[date] || [];
+      var sig = recs.map(function (r) { return r.status + r.subject; }).join('|');
+      if ((cell.getAttribute('data-pa') || '') === sig) return;
+      var old = cell.querySelector('.pa-dot'); if (old) old.remove();
+      cell.setAttribute('data-pa', sig);
+      if (!recs.length) { cell.removeAttribute('title'); return; }
+      var worst = recs.reduce(function (a, r) { return PRI[r.status] > PRI[a] ? r.status : a; }, 'present');
+      var st = LABEL[worst];
+      cell.appendChild(el('span', { class: 'pa-dot', style: 'background:' + st.color, 'aria-hidden': 'true' }));
+      cell.setAttribute('title', 'Attendance: ' + recs.map(function (r) { return (r.subject || 'Full day') + ' ' + LABEL[r.status].label; }).join(', '));
+    });
+    var sel = g.querySelector('button.cell.sel .dn'), info = box.querySelector('.dayinfo');
+    if (info) {
+      var line = info.querySelector('.pa-dayatt'), want = '';
+      if (sel) {
+        var rs = map[key + '-' + pad2(parseInt(sel.textContent, 10))] || [];
+        want = rs.length ? 'Attendance: ' + rs.map(function (r) { return (r.subject || 'Full day') + ' \u2014 ' + LABEL[r.status].label; }).join(' \u00B7 ') : 'Attendance: not marked';
+      }
+      if (want && (!line || line.textContent !== want)) { if (line) line.remove(); info.appendChild(el('div', { class: 'pa-dayatt' }, want)); }
+      if (!want && line) line.remove();
+    }
+    if (!box.querySelector('.pa-legend')) {
+      box.appendChild(el('div', { class: 'pa-legend' }, el('span', {}, 'Attendance:'), STATUS.map(function (st) {
+        return el('span', {}, el('i', { class: 'pa-dot s', style: 'background:' + st.color }), st.label);
+      })));
+    }
+  }
+
   /* ---------------- plug into the pages ---------------- */
   window.photonAdminAttendance = function (view) { clear(view); view.appendChild(staffPanel({ admin: true })); };
 
@@ -459,6 +599,7 @@
   function inject() {
     var root = document.getElementById('ss-root');
     if (!root) return;
+    decorateCal();
     var sn = findCard('Special notes');
     if (sn && !root.querySelector('#pa-student')) {
       var docs = root.querySelector('#pd-student');
