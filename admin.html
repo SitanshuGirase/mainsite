@@ -2473,11 +2473,11 @@ async function renderFeeSettings(view) {
    ==================================================================== */
 const NAV = [
   ['Start', [['home', '🏠', 'Overview', renderOverview]]],
-  ['Content', [['announcements', '📣', 'Announcements', renderAnnouncements], ['notes_lib', '📖', 'Notes library', v => window.photonAdminNotes ? window.photonAdminNotes(v) : Promise.reject(new Error('The Notes library did not load. Please refresh the page.'))], ['notes', '📚', 'Home-page note cards'], ['faculty', '🧑‍🏫', 'Faculty'], ['gallery', '🖼️', 'Gallery'], ['reel', '🎞️', 'Video tour slideshow'], ['testimonials', '💬', 'Testimonials'], ['faqs', '❓', 'FAQ'], ['quotes', '✨', 'Quotes']]],
+  ['Content', [['announcements', '📣', 'Announcements', renderAnnouncements], ['notes_lib', '📖', 'Notes library', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminNotes; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Notes library did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['notes', '📚', 'Home-page note cards'], ['faculty', '🧑‍🏫', 'Faculty'], ['gallery', '🖼️', 'Gallery'], ['reel', '🎞️', 'Video tour slideshow'], ['testimonials', '💬', 'Testimonials'], ['faqs', '❓', 'FAQ'], ['quotes', '✨', 'Quotes']]],
   ['Pages', [['pages', '📄', 'New pages', renderPages], ['headerbtns', '🔘', 'Header buttons', renderHeaderButtons], ['forms', '📝', 'Forms', renderForms], ['submissions', '📥', 'Form submissions', renderSubmissions], ['sections', '🧩', 'New sections'], ['text', '✏️', 'Site text', renderText], ['images', '🖼️', 'Site images', renderImages]]],
-  ['Students', [['students', '🎓', 'Students', renderStudents], ['schedule', '📅', 'Schedule', renderSchedule], ['timetable', '🗓️', 'Timetable', renderTimetable], ['notes', '📌', 'Notes', renderNotes], ['attendance', '✅', 'Attendance', v => window.photonAdminAttendance ? window.photonAdminAttendance(v) : Promise.reject(new Error('The Attendance screen did not load. Please refresh the page.'))], ['teachers', '🧑‍🏫', 'Teachers', renderTeachers]]],
+  ['Students', [['students', '🎓', 'Students', renderStudents], ['schedule', '📅', 'Schedule', renderSchedule], ['timetable', '🗓️', 'Timetable', renderTimetable], ['notes', '📌', 'Notes', renderNotes], ['attendance', '✅', 'Attendance', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminAttendance; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Attendance screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['teachers', '🧑‍🏫', 'Teachers', renderTeachers]]],
   ['Fees', [['fee_dash', '📊', 'Fee dashboard', renderFeeDash], ['fee_verify', '✅', 'Confirm payments', renderFeeVerify], ['fee_plans', '📋', 'Fee structure', renderFeePlans], ['fee_dues', '📅', 'Dues', renderFeeDues], ['fee_settings', '🔑', 'Payment settings', renderFeeSettings]]],
-  ['Settings', [['keys', '🔑', 'API keys & AI', renderKeys], ['storage', '📊', 'Storage', v => window.photonAdminStorage ? window.photonAdminStorage(v) : Promise.reject(new Error('The Storage screen did not load. Please refresh the page.'))]]]
+  ['Settings', [['keys', '🔑', 'API keys & AI', renderKeys], ['ai_providers', '✨', 'AI providers', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminAI; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The AI providers screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['storage', '📊', 'Storage', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminStorage; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Storage screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })]]]
 ];
 const ROUTES = {};
 NAV.forEach(([, items]) => items.forEach(([id, icon, label, fn]) => { ROUTES[id] = { id, icon, label, render: fn || (v => renderCollection(id, v)) }; }));
@@ -2609,5 +2609,6 @@ boot();
 </style>
 <script src="photon-attendance.js"></script>
 <script src="photon-notes.js"></script>
+<script src="photon-ai.js"></script>
 </body>
 </html>

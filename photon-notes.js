@@ -120,7 +120,7 @@
     catch (e) { throw new Error('Could not reach the notes service. Check your internet and try again.'); }
     var data = null;
     try { data = await res.json(); } catch (e) { /* not JSON */ }
-    if (!res.ok) throw new Error((data && (data.error || data.message)) || 'Something went wrong (' + res.status + ').');
+    if (!res.ok) { var err = new Error((data && (data.error || data.message)) || 'Something went wrong (' + res.status + ').'); err.status = res.status; throw err; }
     return data;
   }
   async function fetchAll(anon) {
@@ -140,6 +140,13 @@
     try {
       var s = await session();
       if (!s) throw new Error('Please sign in again.');
+      if (doc.file && doc.file.store === 'neon') {
+        var lk = await call('/api/documents/' + doc.id + '/file?link=1' + (download ? '&download=1' : ''));
+        if (!lk.url) throw new Error('Could not open this file.');
+        if (!download && w) { w.location = lk.url; }
+        else { var a2 = el('a', { href: lk.url }); document.body.appendChild(a2); a2.click(); a2.remove(); }
+        return;
+      }
       var res = await fetch(API + '/api/documents/' + doc.id + '/file' + (download ? '?download=1' : ''), { headers: { Authorization: 'Bearer ' + s.access_token } });
       if (!res.ok) throw new Error('Could not open this file (' + res.status + ').');
       var url = URL.createObjectURL(await res.blob());
@@ -291,6 +298,23 @@
       el('div', { class: 'pn-meter', role: 'img', 'aria-label': pct + ' percent of storage used' }, el('i', { style: 'width:' + Math.max(pct, 1) + '%' + (pct >= 85 ? ';background:#ff6b6b' : '') })));
   }
 
+  /* ---------- upload a file straight to the file store (fast); null = not set up, use the old route ---------- */
+  async function uploadFileTo(docId, fl, onProgress) {
+    var ticket;
+    try { ticket = await call('/api/documents/' + docId + '/upload-url', { method: 'POST', body: { name: fl.name, size: fl.size } }); }
+    catch (e) { if (e.status === 409) return null; throw e; }
+    await new Promise(function (resolve, reject) {
+      var x = new XMLHttpRequest();
+      x.open('PUT', ticket.url);
+      x.upload.onprogress = function (ev) { if (ev.lengthComputable) onProgress(Math.round(ev.loaded / ev.total * 100)); };
+      x.onload = function () { if (x.status >= 200 && x.status < 300) resolve(); else reject(new Error('The file store refused the upload (' + x.status + '). An admin may need to press "Set up file store" on the Storage screen.')); };
+      x.onerror = function () { reject(new Error('Could not reach the file store. An admin should open Storage and press "Set up file store".')); };
+      x.send(fl);
+    });
+    var r = await call('/api/documents/' + docId + '/upload-done', { method: 'POST', body: { key: ticket.key, name: fl.name } });
+    return r.document;
+  }
+
   /* ---------------- the staff panel: browse + add ---------------- */
   function notesPanel(opts) {
     var admin = !!opts.admin;
@@ -389,8 +413,12 @@
         created = (await call('/api/documents', { method: 'POST', body: body })).document;
         if (fl) {
           msg(out, 'Uploading ' + fl.name + '\u2026');
-          var fd = new FormData(); fd.append('file', fl, fl.name);
-          created = (await call('/api/documents/' + created.id + '/file', { method: 'POST', form: fd })).document;
+          var direct = await uploadFileTo(created.id, fl, function (p) { msg(out, 'Uploading ' + fl.name + ' \u2014 ' + p + '%'); });
+          if (direct) created = direct;
+          else {
+            var fd = new FormData(); fd.append('file', fl, fl.name);
+            created = (await call('/api/documents/' + created.id + '/file', { method: 'POST', form: fd })).document;
+          }
         }
         docs.push(created);
         msg(out, 'Added. It is now in ' + [cls.value === '__all' ? 'all classes' : 'Class ' + cls.value, board.value === '__all' ? 'all boards' : board.value, subject.value.trim(), chapter.value.trim()].join(' \u203A ') + '.', 'ok');
@@ -411,17 +439,28 @@
     var card = el('div', { class: 'pn-card' }, el('h2', {}, 'Storage'), el('div', { class: 'pn-empty' }, 'Loading\u2026'));
     view.appendChild(card);
     function load() {
-      Promise.all([call('/api/storage'), fetchAll(false)]).then(function (r) {
-        var info = r[0], docs = r[1];
+      Promise.all([call('/api/storage'), fetchAll(false), call('/api/storage/check').catch(function (e) { return { ok: false, message: e.message }; })]).then(function (r) {
+        var info = r[0], docs = r[1], chk = r[2];
         var files = docs.filter(function (d) { return d.has_file && d.file; }).sort(function (a, b) { return (b.file.size || 0) - (a.file.size || 0); });
         var left = Math.max(0, info.limit_bytes - info.used_bytes);
         clear(card).appendChild(el('h2', {}, 'Storage'));
-        card.appendChild(el('div', { class: 'pn-muted' }, 'Where your notes and PDFs are kept (Cloudflare). Deleting a note frees its space straight away.'));
+        card.appendChild(el('div', { class: 'pn-muted' }, 'Where your notes and PDFs are kept. Deleting a note removes its file for good.'));
         card.appendChild(meterBox(info));
         card.appendChild(el('div', { class: 'pn-stats' },
           stat(fmtSize(info.used_bytes), 'used'), stat(fmtSize(left), 'left'), stat(String(docs.length), 'notes in total'),
           stat(String(files.length), 'uploaded files'), stat(fmtSize(info.max_file_bytes), 'biggest file allowed'),
           stat(String(info.max_uploads_per_day), 'uploads per teacher per day')));
+        var setupMsg = el('div', { class: 'pn-msg' });
+        var setupBtn = el('button', { type: 'button', class: 'pn-btn', onclick: async function () {
+          setupBtn.disabled = true; msg(setupMsg, 'Setting up\u2026');
+          try { await call('/api/storage/setup', { method: 'POST', body: {} }); msg(setupMsg, 'Done. Uploads from your website can now go straight to the file store.', 'ok'); }
+          catch (e) { msg(setupMsg, e.message, 'bad'); }
+          setupBtn.disabled = false;
+        } }, 'Set up file store (one time)');
+        card.appendChild(el('div', { class: 'pn-doc' },
+          el('div', { class: 't' }, el('span', { class: 'pn-badge' + (chk.ok ? '' : ' warn') }, chk.ok ? 'Neon file store: connected' : 'Neon file store: not connected'),
+            el('div', { class: 'pn-muted' }, chk.message || ''), setupMsg),
+          el('div', { class: 'pn-acts' }, chk.configured ? setupBtn : null)));
         if (info.percent_used >= 85) card.appendChild(el('div', { class: 'pn-badge warn' }, 'Storage is almost full. Delete old files below.'));
         card.appendChild(el('h3', { style: 'margin:16px 0 6px;font-size:15px' }, 'Largest files'));
         if (!files.length) card.appendChild(el('div', { class: 'pn-empty' }, 'No uploaded files yet.'));
