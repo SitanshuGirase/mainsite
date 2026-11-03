@@ -52,12 +52,15 @@
         'Mode: ' + d.mode + (d.mode === 'balanced' ? ' (spreads questions across all keys).' : ' (uses them in order, only moving on when one fails).')));
       card.appendChild(el('p', { style: 'margin:12px 0' }, el('b', {}, on.length + ' of ' + d.providers.filter(function (p) { return p.id.indexOf('custom') !== 0; }).length + ' main providers connected'),
         ' \u00B7 ' + on.reduce(function (n, p) { return n + p.keys; }, 0) + ' keys in total'));
+      card.appendChild(el('p', { class: 'ai-muted', style: 'margin:0 0 8px' }, 'Web search (Tavily): ' + (d.tavilyKeys ? d.tavilyKeys + ' key' + (d.tavilyKeys === 1 ? '' : 's') + ' connected \u00B7 ' + d.tavilyDepth + ' depth. One Tavily key serves every AI provider; extra keys (comma-separated in TAVILY_API_KEY) rotate when one runs out of monthly credits.' : 'not connected (secret TAVILY_API_KEY). The assistant works, but cannot look things up live.')));
       d.providers.forEach(function (p) {
         var custom = p.id.indexOf('custom') === 0;
         if (custom && !p.keys) return; // hide unused optional slots
         card.appendChild(el('div', { class: 'ai-row' },
           el('div', { class: 't' }, el('b', {}, p.label), el('span', { class: 'ai-badge ' + (p.keys ? 'ok' : 'off') }, p.keys ? p.keys + ' key' + (p.keys === 1 ? '' : 's') + ' connected' : 'not added'),
             p.restingSeconds > 0 ? el('span', { class: 'ai-badge bad' }, 'resting ' + p.restingSeconds + 's') : null,
+            p.trains ? el('span', { class: 'ai-badge off', title: 'The free tier of this provider may use prompts to improve its products' }, 'free tier may train on prompts \u00B7 not used for student chats') : null,
+            p.excluded ? el('span', { class: 'ai-badge bad' }, 'switched off (AI_EXCLUDE)') : null,
             el('div', { class: 'ai-muted' }, 'Model: ' + (p.models.main || '\u2014') + (p.models.vision ? ' \u00B7 reads photos' : '')),
             p.keys ? null : el('div', { class: 'ai-muted', style: 'margin-top:4px' }, 'Secret name: ', el('span', { class: 'ai-code' }, [p.secret].concat(p.extraSecrets).join(' + ')), ' \u00B7 get a key at ' + p.signup))));
       });
@@ -66,14 +69,19 @@
         btn.disabled = true; out.textContent = 'Testing every key\u2026 this takes a few seconds.'; while (list.firstChild) list.removeChild(list.firstChild);
         try {
           var t = await ask('ai_test'), good = 0;
+          var busyN = 0;
           t.results.sort(function (a, b) { return a.provider < b.provider ? -1 : 1; }).forEach(function (r) {
-            if (r.ok) good++;
+            if (r.ok) good++; else if (r.busy) busyN++;
             list.appendChild(el('div', { class: 'ai-row' }, el('div', { class: 't' },
               el('b', {}, r.label + ' \u00B7 key ' + r.key), el('span', { class: 'ai-code', style: 'margin-left:8px' }, r.keyHint),
-              el('span', { class: 'ai-badge ' + (r.ok ? 'ok' : 'bad') }, r.ok ? 'works \u00B7 ' + r.ms + ' ms' : 'failed'),
-              r.ok ? null : el('div', { class: 'ai-muted' }, (r.status ? 'Error ' + r.status + ': ' : '') + (r.error || 'no answer') + ' (model ' + r.model + ')'))));
+              el('span', { class: 'ai-badge ' + (r.ok ? 'ok' : r.busy ? 'off' : 'bad') }, r.ok ? 'works \u00B7 ' + r.ms + ' ms' : r.busy ? 'key OK \u00B7 busy right now' : 'failed'),
+              r.healed ? el('span', { class: 'ai-badge ok' }, 'old model retired \u2192 switched automatically') : null,
+              el('div', { class: 'ai-muted' }, 'Model: ' + r.model),
+              r.ok ? null : el('div', { class: 'ai-muted' }, (r.hint ? r.hint + ' ' : '') + (r.status ? '(error ' + r.status + ')' : '')),
+              r.ok || !r.error ? null : el('details', { class: 'ai-muted' }, el('summary', {}, 'Technical detail'), el('div', { style: 'overflow-wrap:anywhere' }, r.error)))));
           });
-          out.textContent = good + ' of ' + t.results.length + ' keys work.' + (good < t.results.length ? ' For a failed key, check the secret value, or set <PROVIDER>_MODEL to a model that exists on your account.' : '');
+          var bad = t.results.length - good - busyN;
+          out.textContent = good + ' of ' + t.results.length + ' keys work' + (busyN ? ', ' + busyN + ' valid but busy (free limit used up for now)' : '') + (bad ? ', ' + bad + ' need attention.' : '.');
         } catch (e) { out.textContent = e.message; }
         btn.disabled = false;
       } }, 'Test all keys');
