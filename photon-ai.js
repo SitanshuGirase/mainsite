@@ -1,4 +1,4 @@
-/* Photon Academy - admin screen "AI providers"
+* Photon Academy - admin screen "AI providers"
    Shows which free AI providers have keys in Supabase, and tests every key with one tap.
    It only ever sees provider names, how many keys, and the last 4 characters. Keys are never sent to the browser. */
 (function () {
@@ -30,7 +30,7 @@
     '.ai-btn.pri{background:#4fd6e8;border-color:#4fd6e8;color:#06202a;font-weight:600}.ai-btn:disabled{opacity:.5;cursor:not-allowed}',
     '.ai-msg{min-height:20px;margin-top:8px;font-size:13.5px}'
   ].join('\n'); document.head.appendChild(css);
-
+ 
   async function ask(action) {
     var sb = window.photonSupabase;
     if (!sb) throw new Error('Not signed in.');
@@ -39,7 +39,7 @@
     if (r.data && r.data.error) throw new Error(r.data.error);
     return r.data;
   }
-
+ 
   window.photonAdminAI = function (view) {
     while (view.firstChild) view.removeChild(view.firstChild);
     var card = el('div', { class: 'ai-card' }, el('h2', {}, 'AI providers'), el('div', { class: 'ai-muted' }, 'Loading\u2026'));
@@ -91,3 +91,4 @@
     }).catch(function (e) { while (card.firstChild) card.removeChild(card.firstChild); card.appendChild(el('h2', {}, 'AI providers')); card.appendChild(el('div', { class: 'ai-muted' }, e.message)); });
   };
 })();
+ 
