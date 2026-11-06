@@ -1,4 +1,4 @@
-* Photon Academy - admin screen "AI providers"
+/* Photon Academy - admin screen "AI providers"
    Shows which free AI providers have keys in Supabase, and tests every key with one tap.
    It only ever sees provider names, how many keys, and the last 4 characters. Keys are never sent to the browser. */
 (function () {
