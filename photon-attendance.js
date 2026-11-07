@@ -50,6 +50,7 @@
   function pctColor(p) { return tx(p === null || p === undefined ? '#8b97ad' : p >= 85 ? '#3ddc97' : p >= 75 ? '#f5b942' : '#ff6b6b'); }
   function fillColor(p) { return p === null || p === undefined ? '#8b97ad' : p >= 85 ? '#3ddc97' : p >= 75 ? '#f5b942' : '#ff6b6b'; }
   function pctText(p) { return p === null || p === undefined ? '\u2014' : p + '%'; }
+  function pieBox(title, slices) { var U = window.PhotonUI; if (!U || !U.pieChart) return null; return el('div', { class: 'pm-chart', style: 'margin:10px 0' }, el('h3', { style: 'margin-top:0' }, title), U.pieChart(slices)); }
   function msg(box, text, kind) { box.textContent = text || ''; box.className = 'pa-msg' + (kind ? ' ' + kind : ''); }
 
   var css = el('style', {});
@@ -178,6 +179,7 @@
         el('div', { class: 'pa-chips' }, STATUS.map(function (st) {
           return el('span', { class: 'pa-chip', style: 'border-color:' + st.color + '66' }, st.label, el('b', { style: 'color:' + tx(st.color) }, s[st.key]));
         }))));
+      body.appendChild(pieBox('Attendance split', STATUS.map(function (st) { return { label: st.label, value: s[st.key] || 0, color: st.color }; })));
       if (s.percent !== null && s.percent < 75) {
         body.appendChild(el('div', { class: 'pa-banner' }, 'Your attendance is below 75%. Please try to attend regularly, and speak to your teacher if something is getting in the way.'));
       }
@@ -455,6 +457,30 @@
       body.appendChild(el('div', { class: 'pa-hero' },
         el('div', {}, el('div', { class: 'pa-big', style: 'color:' + pctColor(t.percent) }, pctText(t.percent)), el('div', { class: 'pa-muted' }, 'overall')),
         el('div', { class: 'pa-chips' }, STATUS.map(function (st) { return el('span', { class: 'pa-chip', style: 'border-color:' + st.color + '66' }, st.label, el('b', { style: 'color:' + tx(st.color) }, t[st.key])); }))));
+      var withPct = d.students.filter(function (x) { return x.percent !== null && x.percent !== undefined; });
+      body.appendChild(pieBox('Attendance split', STATUS.map(function (st) { return { label: st.label, value: t[st.key] || 0, color: st.color }; })));
+      body.appendChild(pieBox('Students by attendance level', [
+        { label: '85% and above', value: withPct.filter(function (x) { return x.percent >= 85; }).length, color: '#3ddc97' },
+        { label: '75% to 84%', value: withPct.filter(function (x) { return x.percent >= 75 && x.percent < 85; }).length, color: '#f5b942' },
+        { label: 'Below 75%', value: withPct.filter(function (x) { return x.percent < 75; }).length, color: '#ff6b6b' }]));
+      var thr = el('input', { type: 'number', class: 'pa-in', min: '1', max: '100', step: '1', style: 'width:80px', 'aria-label': 'Low attendance limit (percent)' });
+      var thrVal = 75; try { var sv = Number(localStorage.getItem('pa-threshold')); if (sv >= 1 && sv <= 100) thrVal = sv; } catch (e) { }
+      thr.value = thrVal;
+      var lowBox = el('div', {});
+      function drawLow() {
+        var lim = Number(thr.value); if (!(lim >= 1 && lim <= 100)) lim = 75; try { localStorage.setItem('pa-threshold', String(lim)); } catch (e) { }
+        clear(lowBox);
+        var low = withPct.filter(function (x) { return x.percent < lim; }).sort(function (x, y) { return x.percent - y.percent; });
+        lowBox.appendChild(el('div', { class: 'pa-muted' }, low.length ? low.length + ' student' + (low.length === 1 ? '' : 's') + ' below ' + lim + '%:' : 'No student is below ' + lim + '% in this report.'));
+        low.slice(0, 60).forEach(function (x) {
+          lowBox.appendChild(el('div', { class: 'pa-month', style: 'grid-template-columns:minmax(120px,42%) 1fr auto' }, el('span', {}, x.name + ' \u00B7 Class ' + (x.class_name || '?') + (x.division ? ' ' + x.division : '')),
+            el('div', { class: 'pa-track' }, el('div', { class: 'pa-fill', style: 'width:' + x.percent + '%;background:' + fillColor(x.percent) })), el('span', { style: 'font-weight:700' }, pctText(x.percent))));
+        });
+      }
+      thr.addEventListener('input', drawLow);
+      body.appendChild(el('h3', {}, 'Low attendance alert'));
+      body.appendChild(el('div', { class: 'pa-muted', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' }, 'Show students below', thr, '%'));
+      body.appendChild(lowBox); drawLow();
       var tbody = el('tbody');
       d.students.forEach(function (s) {
         var tr = el('tr', { style: 'cursor:pointer', title: 'Show this student\u2019s days' },

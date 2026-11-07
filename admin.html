@@ -2163,13 +2163,25 @@ async function renderTeachers(view) {
   const byT = new Map(); (tcs || []).forEach(x => { if (!byT.has(x.teacher_id)) byT.set(x.teacher_id, []); byT.get(x.teacher_id).push(x); });
   const card = (t) => {
     const list = (byT.get(t.id) || []).sort((x, y) => Number(x.class_name) - Number(y.class_name) || (x.division || '').localeCompare(y.division || ''));
-    const cls = h('select', {}, ...CLASSES.map(c => h('option', { value: c }, 'Class ' + c)));
+    const picked = new Set(), chipBtns = [];
+    const setOn = (b, on) => { b.style.cssText = on ? 'background:rgba(79,214,232,.35);border-color:#4fd6e8' : ''; b.setAttribute('aria-pressed', String(!!on)); };
+    const allBtn = h('button', { type: 'button', class: 'btn sm', 'aria-pressed': 'false' }, 'All classes');
+    CLASSES.forEach(c => {
+      const b = h('button', { type: 'button', class: 'btn sm', 'aria-pressed': 'false' }, 'Class ' + c);
+      b.onclick = () => { if (picked.has(c)) { picked.delete(c); setOn(b, false); } else { picked.add(c); setOn(b, true); } setOn(allBtn, picked.size === CLASSES.length); };
+      chipBtns.push([c, b]);
+    });
+    allBtn.onclick = () => { const on = picked.size !== CLASSES.length; chipBtns.forEach(([c, b]) => { if (on) picked.add(c); else picked.delete(c); setOn(b, on); }); setOn(allBtn, on); };
     const div = h('select', {}, ...divOptions('All divisions'));
-    const add = h('button', { type: 'button', class: 'btn primary sm' }, 'Add class');
+    const add = h('button', { type: 'button', class: 'btn primary sm' }, 'Add selected classes');
     add.onclick = () => busy(add, 'Adding…', async () => {
-      const { error: e } = await sb.from('teacher_classes').insert({ teacher_id: t.id, class_name: cls.value, division: div.value || null });
-      if (e) return toast(/duplicate|unique/i.test(e.message || '') ? 'They already have that class.' : friendly(e), 'err');
-      toast('Class added.'); reload();
+      if (!picked.size) return toast('Pick at least one class (or All classes).', 'err');
+      const have = byT.get(t.id) || [], dv = div.value || null;
+      const rows = [...picked].filter(c => !have.some(x => x.class_name === c && (!x.division || x.division === dv))).map(c => ({ teacher_id: t.id, class_name: c, division: dv }));
+      if (!rows.length) return toast('They already have those classes.', 'err');
+      const { error: e } = await sb.from('teacher_classes').insert(rows);
+      if (e) return toast(/duplicate|unique/i.test(e.message || '') ? 'They already have one of those classes.' : friendly(e), 'err');
+      toast(rows.length + (rows.length === 1 ? ' class added.' : ' classes added.')); reload();
     });
     const chip = (x) => h('span', { style: 'display:inline-flex;gap:6px;align-items:center;padding:4px 10px;margin:3px 6px 3px 0;border-radius:99px;background:rgba(79,214,232,.14);border:1px solid rgba(79,214,232,.4)' },
       'Class ' + x.class_name + (x.division ? ' · Division ' + x.division : ' · all divisions'),
@@ -2183,7 +2195,9 @@ async function renderTeachers(view) {
     };
     return h('div', { class: 'card' }, h('h2', {}, t.display_name || '(no name)'), h('p', { class: 'muted' }, t.email || 'no email'),
       h('div', {}, ...(list.length ? list.map(chip) : [h('p', { class: 'muted' }, 'No classes yet. A teacher with no classes sees nothing.')])),
-      h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px' }, cls, div, add),
+      h('p', { class: 'muted', style: 'margin:12px 0 4px' }, 'Pick the classes this teacher teaches (tap several, or All classes), choose a division if needed, then add.'),
+      h('div', { style: 'display:flex;flex-wrap:wrap;gap:6px' }, allBtn, ...chipBtns.map(x => x[1])),
+      h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px' }, div, add),
       h('div', { style: 'margin-top:12px' }, h('button', { type: 'button', class: 'btn danger sm', onclick: drop }, 'Remove teacher role')));
   };
   view.replaceChildren(
@@ -2475,9 +2489,9 @@ const NAV = [
   ['Start', [['home', '🏠', 'Overview', renderOverview]]],
   ['Content', [['announcements', '📣', 'Announcements', renderAnnouncements], ['notes_lib', '📖', 'Notes library', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminNotes; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Notes library did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['notes', '📚', 'Home-page note cards'], ['faculty', '🧑‍🏫', 'Faculty'], ['gallery', '🖼️', 'Gallery'], ['reel', '🎞️', 'Video tour slideshow'], ['testimonials', '💬', 'Testimonials'], ['faqs', '❓', 'FAQ'], ['quotes', '✨', 'Quotes']]],
   ['Pages', [['pages', '📄', 'New pages', renderPages], ['headerbtns', '🔘', 'Header buttons', renderHeaderButtons], ['forms', '📝', 'Forms', renderForms], ['submissions', '📥', 'Form submissions', renderSubmissions], ['sections', '🧩', 'New sections'], ['text', '✏️', 'Site text', renderText], ['images', '🖼️', 'Site images', renderImages]]],
-  ['Students', [['students', '🎓', 'Students', renderStudents], ['schedule', '📅', 'Schedule', renderSchedule], ['timetable', '🗓️', 'Timetable', renderTimetable], ['notes', '📌', 'Notes', renderNotes], ['attendance', '✅', 'Attendance', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminAttendance; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Attendance screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['teachers', '🧑‍🏫', 'Teachers', renderTeachers]]],
+  ['Students', [['students', '🎓', 'Students', renderStudents], ['schedule', '📅', 'Schedule', renderSchedule], ['timetable', '🗓️', 'Timetable', renderTimetable], ['notes', '📌', 'Notes', renderNotes], ['attendance', '✅', 'Attendance', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminAttendance; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Attendance screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['marks', '📈', 'Marks & analytics', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminMarks; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Marks screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['homework', '📝', 'Homework', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminHomework; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Homework screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['teachers', '🧑‍🏫', 'Teachers', renderTeachers]]],
   ['Fees', [['fee_dash', '📊', 'Fee dashboard', renderFeeDash], ['fee_verify', '✅', 'Confirm payments', renderFeeVerify], ['fee_plans', '📋', 'Fee structure', renderFeePlans], ['fee_dues', '📅', 'Dues', renderFeeDues], ['fee_settings', '🔑', 'Payment settings', renderFeeSettings]]],
-  ['Settings', [['keys', '🔑', 'API keys & AI', renderKeys], ['ai_providers', '✨', 'AI providers', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminAI; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The AI providers screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['storage', '📊', 'Storage', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminStorage; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Storage screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })]]]
+  ['Settings', [['keys', '🔑', 'API keys & AI', renderKeys], ['backup', '💾', 'Backup & export', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminBackup; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Backup screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['ai_providers', '✨', 'AI providers', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminAI; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The AI providers screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['storage', '📊', 'Storage', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminStorage; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Storage screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })]]]
 ];
 const ROUTES = {};
 NAV.forEach(([, items]) => items.forEach(([id, icon, label, fn]) => { ROUTES[id] = { id, icon, label, render: fn || (v => renderCollection(id, v)) }; }));
@@ -2609,6 +2623,9 @@ boot();
 </style>
 <script src="photon-attendance.js"></script>
 <script src="photon-notes.js"></script>
+<script src="photon-marks.js"></script>
+<script src="photon-homework.js"></script>
+<script src="photon-backup.js"></script>
 <script src="photon-ai.js"></script>
 </body>
 </html>
