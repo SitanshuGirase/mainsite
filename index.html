@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <script>var __t=null;try{__t=localStorage.getItem("photon-theme")}catch(e){}if(__t!=="dark")document.documentElement.setAttribute("data-theme","light")</script>
-<script>/* lite mode: switches off heavy blur effects on weak phones. Force with ?lite=1 or ?lite=0 (remembered). */(function(){try{var d=document.documentElement,n=navigator,c=n.connection||{},q=/[?&]lite=([01])/.exec(location.search);if(q)localStorage.setItem("photon-lite",q[1]);var f=localStorage.getItem("photon-lite");var small=Math.min(screen.width,screen.height)<=900;var weak=small&&((n.deviceMemory&&n.deviceMemory<=4)||(n.hardwareConcurrency&&n.hardwareConcurrency<=4));if(f==="1"||(f!=="0"&&(weak||c.saveData||/2g/.test(c.effectiveType||""))))d.classList.add("lite")}catch(e){}})()</script>
+<script>/* lite mode: switches off heavy blur effects on weak phones. Force with ?lite=1 or ?lite=0 (remembered). */(function(){try{var d=document.documentElement,n=navigator,c=n.connection||{},q=/[?&]lite=([01])/.exec(location.search);if(q)localStorage.setItem("photon-lite",q[1]);var f=localStorage.getItem("photon-lite");var small=Math.min(screen.width,screen.height)<=900;var weak=small&&n.deviceMemory&&n.deviceMemory<=2;if(f==="1"||(f!=="0"&&(weak||c.saveData||/2g/.test(c.effectiveType||""))))d.classList.add("lite")}catch(e){}})()</script>
 <style id="photon-critical">
 /* first-paint colours: the saved theme is applied before anything is drawn, so there is no flash of the other colour */
 html{background:#0b1220;color-scheme:dark}
@@ -418,7 +418,7 @@ body[data-page="home"] .hdr-quick.hq-dup{display:none!important}
 .photon-announcement{padding-left:72px!important}
 .photon-announcement::before{content:"\1F4E2";position:absolute;left:16px;top:16px;width:44px;height:44px;border-radius:50%;background:rgba(79,214,232,.14);display:flex;align-items:center;justify-content:center;font-size:20px}
 </style>
-<style id="photon-lite">html.lite *,html.lite *::before,html.lite *::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}html.lite .nav,html.lite .ai-panel{background-color:rgba(11,18,32,.96)!important}html[data-theme="light"].lite .nav,html[data-theme="light"].lite .ai-panel{background-color:rgba(255,255,255,.97)!important}html.lite .sidebar{background-color:rgba(11,18,32,.98)!important}html[data-theme="light"].lite .sidebar{background-color:#fff!important}</style>
+<style id="photon-lite">html.lite .stage{display:none!important}html.lite *:not([class*="spin"]):not([class*="load"]):not([class*="dot"]),html.lite *::before,html.lite *::after{animation-iteration-count:1!important}html.lite *{text-shadow:none!important;will-change:auto!important;scroll-behavior:auto!important}html.lite *,html.lite *::before,html.lite *::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}html.lite .nav,html.lite .ai-panel{background-color:rgba(11,18,32,.96)!important}html[data-theme="light"].lite .nav,html[data-theme="light"].lite .ai-panel{background-color:rgba(255,255,255,.97)!important}html.lite .sidebar{background-color:rgba(11,18,32,.98)!important}html[data-theme="light"].lite .sidebar{background-color:#fff!important}</style>
 </head>
 <body>
 <div id="photon-loader" role="status" aria-live="polite">
@@ -2849,7 +2849,7 @@ body[data-page="home"] .hdr-quick.hq-dup{display:none!important}
 })();
 </script>
 <script>
-window.__ssCube=function(){if(window.__ssCubed)return;window.__ssCubed=true;
+window.__ssCube=function(){if(window.__ssCubed)return;if(document.documentElement.classList.contains('lite'))return;window.__ssCubed=true;
   var cube=document.getElementById('ss-cube');if(!cube)return;
   var tint={f:['rgba(79,214,232,.20)','rgba(79,214,232,.35)'],b:['rgba(124,108,240,.22)','rgba(124,108,240,.35)'],r:['rgba(242,102,139,.16)','rgba(242,102,139,.30)'],l:['rgba(240,180,41,.13)','rgba(240,180,41,.28)'],t:['rgba(238,242,251,.14)','rgba(238,242,251,.22)'],d:['rgba(79,140,246,.18)','rgba(79,140,246,.32)']};
   function d(c){var e=document.createElement('div');e.className=c;return e}
@@ -3638,6 +3638,9 @@ html[data-theme="light"] .tbl-bar input[type=range]::-moz-range-thumb{background
 <script src="photon-notes.js" defer></script>
 <script src="photon-marks.js" defer></script>
 <script src="photon-homework.js" defer></script>
+<script src="photon-parent.js" defer></script>
+<script src="photon-analytics.js" defer></script>
+<script src="photon-perf.js" defer></script>
 <script id="photon-heroquick">
 /* Collects the extra links the admin added (forms, new pages, header buttons) and shows them in the home hero.
    Everything the hero buttons already show is skipped, so nothing appears twice. */

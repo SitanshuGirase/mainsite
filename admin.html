@@ -2486,7 +2486,7 @@ async function renderFeeSettings(view) {
    Shell: navigation, routing, auth
    ==================================================================== */
 const NAV = [
-  ['Start', [['home', '🏠', 'Overview', renderOverview]]],
+  ['Start', [['home', '🏠', 'Overview', renderOverview], ['analytics', '📊', 'Analytics', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminAnalytics; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Analytics screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })]]],
   ['Content', [['announcements', '📣', 'Announcements', renderAnnouncements], ['notes_lib', '📖', 'Notes library', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminNotes; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Notes library did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['notes', '📚', 'Home-page note cards'], ['faculty', '🧑‍🏫', 'Faculty'], ['gallery', '🖼️', 'Gallery'], ['reel', '🎞️', 'Video tour slideshow'], ['testimonials', '💬', 'Testimonials'], ['faqs', '❓', 'FAQ'], ['quotes', '✨', 'Quotes']]],
   ['Pages', [['pages', '📄', 'New pages', renderPages], ['headerbtns', '🔘', 'Header buttons', renderHeaderButtons], ['forms', '📝', 'Forms', renderForms], ['submissions', '📥', 'Form submissions', renderSubmissions], ['sections', '🧩', 'New sections'], ['text', '✏️', 'Site text', renderText], ['images', '🖼️', 'Site images', renderImages]]],
   ['Students', [['students', '🎓', 'Students', renderStudents], ['schedule', '📅', 'Schedule', renderSchedule], ['timetable', '🗓️', 'Timetable', renderTimetable], ['notes', '📌', 'Notes', renderNotes], ['attendance', '✅', 'Attendance', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminAttendance; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Attendance screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['marks', '📈', 'Marks & analytics', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminMarks; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Marks screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['homework', '📝', 'Homework', v => new Promise((ok, no) => { let n = 0; (function t() { const f = window.photonAdminHomework; if (f) return ok(f(v)); if (++n > 40) return no(new Error('The Homework screen did not load. Please refresh the page.')); setTimeout(t, 100); })(); })], ['teachers', '🧑‍🏫', 'Teachers', renderTeachers]]],
@@ -2626,6 +2626,8 @@ boot();
 <script src="photon-marks.js"></script>
 <script src="photon-homework.js"></script>
 <script src="photon-backup.js"></script>
+<script src="photon-analytics.js"></script>
 <script src="photon-ai.js"></script>
+<script src="photon-perf.js" defer></script>
 </body>
 </html>

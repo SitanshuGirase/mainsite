@@ -129,7 +129,7 @@
       var v = Math.max(0, Math.min(100, it.value));
       return el('div', { class: 'pm-bar' }, el('span', { class: 'l', title: it.label }, it.label),
         el('div', { class: 'pm-track' }, el('div', { class: 'pm-fill', style: 'width:' + v + '%;background:' + (it.color || '#4fd6e8') })),
-        el('span', {}, it.value + (suffix === undefined ? '%' : suffix)));
+        el('span', {}, it.text !== undefined ? it.text : it.value + (suffix === undefined ? '%' : suffix)));
     }));
   }
   function bandSlices(pcts) {
@@ -325,7 +325,7 @@
     return card;
   }
 
-  window.PhotonUI = { el: el, clear: clear, pieChart: pieChart, hbars: hbars, statBox: statBox, chartBox: chartBox, field: field, sel: sel, uniq: uniq, numSort: numSort, fmtDate: fmtDate, msg: msg, friendly: friendly, num: num, avg: avg, loadStudents: loadStudents, sb: sb };
+  window.PhotonUI = { lineChart: lineChart, colorFor: colorFor, bandSlices: bandSlices, shortDate: shortDate, pct: pct, el: el, clear: clear, pieChart: pieChart, hbars: hbars, statBox: statBox, chartBox: chartBox, field: field, sel: sel, uniq: uniq, numSort: numSort, fmtDate: fmtDate, msg: msg, friendly: friendly, num: num, avg: avg, loadStudents: loadStudents, sb: sb };
   window.photonAdminMarks = function (view) { clear(view); studentsPromise = null; view.appendChild(staffPanel({ admin: true })); };
 
   /* ---------------- mounting in Student Space ---------------- */
