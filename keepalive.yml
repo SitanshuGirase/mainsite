@@ -1,0 +1,16 @@
+name: keep-alive
+on:
+  schedule:
+    - cron: '17 3 */3 * *'
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Touch the database so it never pauses
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
+            "https://unmvqhniprhdijiazfmu.supabase.co/rest/v1/faqs?select=id&limit=1" \
+            -H "apikey: sb_publishable_QzLrK0ta-xz4fJMEVTG27A_B8y4iIml")
+          echo "Database answered with HTTP $code"
+          test "$code" = "200"
