@@ -119,7 +119,7 @@
     }
     async function openReview(hw) {
       u.clear(out); u.msg(msgBox, '');
-      out.appendChild(el('button', { type: 'button', class: 'pm-btn', onclick: function () { refresh().catch(function () { }); } }, '\u2190 Back to homework'));
+      out.appendChild(el('button', { type: 'button', class: 'pm-btn', onclick: function () { refresh().catch(function () { }); } }, u.ico('back'), 'Back to homework'));
       out.appendChild(el('h3', {}, hw.title + ' \u00B7 ' + hw.subject + ' \u00B7 Class ' + hw.class_name));
       var holder = el('div', {}, el('div', { class: 'pm-muted' }, 'Loading\u2026')); out.appendChild(holder);
       try {
@@ -179,6 +179,6 @@
       var p = staffPanel({ admin: false }), a = root.querySelector('#pm-teacher') || root.querySelector('#pa-teacher'); if (a) a.after(p); else (tn.closest('.cols2') || tn).after(p);
     }
   }
-  function start() { var root = document.getElementById('ss-root'); if (!root) return; var t = 0; new MutationObserver(function () { clearTimeout(t); t = setTimeout(inject, 300); }).observe(root, { childList: true, subtree: true }); inject(); }
+  function start() { var root = document.getElementById('ss-root'); if (!root) return; if (window.PhotonUI && window.PhotonUI.onMount) window.PhotonUI.onMount(inject); inject(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

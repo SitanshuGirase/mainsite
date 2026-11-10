@@ -132,6 +132,6 @@
     var tn = findCard('Add a special note');
     if (tn && !root.querySelector('#pn-glance')) { var host = tn.closest('.cols2') || tn; host.before(glanceCard()); }
   }
-  function start() { var root = document.getElementById('ss-root'); if (!root) return; var t = 0; new MutationObserver(function () { clearTimeout(t); t = setTimeout(inject, 500); }).observe(root, { childList: true, subtree: true }); inject(); }
+  function start() { var root = document.getElementById('ss-root'); if (!root) return; if (window.PhotonUI && window.PhotonUI.onMount) window.PhotonUI.onMount(inject); inject(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

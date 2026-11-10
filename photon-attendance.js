@@ -550,12 +550,14 @@
   /* ---------- attendance dots on the student's calendar ---------- */
   var calData = {}, calMe = null, PRI = { absent: 4, late: 3, excused: 2, present: 1 };
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  var monthKeyCache = {};
   function calMonthKey(label) {
-    var now = new Date().getFullYear();
-    for (var y = now - 2; y <= now + 1; y++) for (var m = 0; m < 12; m++) {
-      if (new Date(y, m, 1).toLocaleDateString([], { month: 'long', year: 'numeric' }) === label) return y + '-' + pad2(m + 1);
+    if (Object.prototype.hasOwnProperty.call(monthKeyCache, label)) return monthKeyCache[label];
+    var now = new Date().getFullYear(), found = null;
+    for (var y = now - 2; y <= now + 1 && !found; y++) for (var m = 0; m < 12; m++) {
+      if (new Date(y, m, 1).toLocaleDateString([], { month: 'long', year: 'numeric' }) === label) { found = y + '-' + pad2(m + 1); break; }
     }
-    return null;
+    monthKeyCache[label] = found; return found;
   }
   async function loadCalMonth(key) {
     calData[key] = 'loading';
@@ -643,7 +645,9 @@
     var root = document.getElementById('ss-root');
     if (!root) return;
     var timer = 0;
-    new MutationObserver(function () { clearTimeout(timer); timer = setTimeout(inject, 150); }).observe(root, { childList: true, subtree: true });
+    new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) { var a = muts[i].addedNodes; for (var j = 0; j < a.length; j++) if (a[j].nodeType === 1) { clearTimeout(timer); timer = setTimeout(inject, 150); return; } }
+    }).observe(root, { childList: true, subtree: true });
     inject();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

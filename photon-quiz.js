@@ -70,7 +70,7 @@
     async function run(z) {
       u.clear(card); card.appendChild(el('h2', {}, z.title)); var box = el('div', {}, el('div', { class: 'pm-muted' }, 'Starting\u2026')); card.appendChild(box);
       var r = await sb().rpc('quiz_start', { p_quiz: z.id });
-      if (r.error || !r.data || !r.data[0]) { u.clear(box); box.appendChild(el('div', { class: 'pm-msg err' }, err(r.error))); box.appendChild(el('button', { type: 'button', class: 'pm-btn', onclick: list }, '\u2190 Back')); return; }
+      if (r.error || !r.data || !r.data[0]) { u.clear(box); box.appendChild(el('div', { class: 'pm-msg err' }, err(r.error))); box.appendChild(el('button', { type: 'button', class: 'pm-btn', onclick: list }, u.ico('back'), 'Back')); return; }
       var d = r.data[0], qs = d.questions || [], key = 'pq:' + d.attempt_id, saved = {}, done = false;
       try { saved = JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (e) { saved = {}; }
       var remain = d.duration_min * 60000 - (Date.parse(d.server_now) - Date.parse(d.started_at)), endAt = Date.now() + remain;
@@ -109,11 +109,11 @@
         card.appendChild(el('div', { class: 'pm-charts' }, u.chartBox('Your answers', u.pieChart([{ label: 'Correct', value: right, color: '#3ddc97' }, { label: 'Wrong', value: review.length - right - skipped, color: '#ff6b6b' }, { label: 'Skipped', value: skipped, color: '#f5b942' }]))));
         if (review[0] && review[0].question !== undefined) review.forEach(function (x, i) {
           card.appendChild(el('div', { class: 'pm-row', style: 'display:block' }, el('b', { style: 'overflow-wrap:anywhere' }, (i + 1) + '. ' + x.question),
-            (x.options || []).map(function (o, k) { var good = k === x.correct, mine = k === x.chosen; return el('div', { style: 'margin:4px 0;padding:5px 8px;border-radius:8px;border:1px solid ' + (good ? '#3ddc97' : mine ? '#ff6b6b' : 'rgba(127,127,127,.3)') }, LET[k] + ') ' + o + (good ? '  \u2714 correct' : '') + (mine && !good ? '  \u2718 your answer' : '') + (mine && good ? '  (your answer)' : '')); }),
+            (x.options || []).map(function (o, k) { var good = k === x.correct, mine = k === x.chosen; return el('div', { style: 'margin:4px 0;padding:5px 8px;border-radius:8px;border:1px solid ' + (good ? '#3ddc97' : mine ? '#ff6b6b' : 'rgba(127,127,127,.3)') }, LET[k] + ') ' + o, good ? [' ', u.ico('check', '#3ddc97'), 'correct'] : null, mine && !good ? [' ', u.ico('x', '#ff6b6b'), 'your answer'] : null, mine && good ? ' (your answer)' : null); }),
             x.explanation ? el('div', { class: 'pm-muted', style: 'margin-top:4px' }, 'Why: ' + x.explanation) : null));
         });
       } else card.appendChild(el('div', { class: 'pm-muted' }, 'Your teacher has chosen not to show the answers.'));
-      card.appendChild(el('div', { style: 'margin-top:10px' }, el('button', { type: 'button', class: 'pm-btn', onclick: list }, '\u2190 Back to tests')));
+      card.appendChild(el('div', { style: 'margin-top:10px' }, el('button', { type: 'button', class: 'pm-btn', onclick: list }, u.ico('back'), 'Back to tests')));
     }
     async function review(z) {
       var r = await sb().rpc('quiz_result', { p_quiz: z.id }); if (r.error || !r.data || !r.data[0]) return;
@@ -161,7 +161,7 @@
         out.appendChild(el('div', { class: 'pm-row' }, el('div', { class: 't' }, el('b', {}, z.title), el('span', { class: 'pm-badge ' + (z.published ? 'ok' : 'off') }, z.published ? 'published' : 'draft'), el('div', { class: 'pm-muted' }, z.subject + ' \u00B7 Class ' + z.class_name + (z.board ? ' \u00B7 ' + z.board : '') + (z.division ? ' \u00B7 Div ' + z.division : '') + ' \u00B7 ' + z.duration_min + ' min' + (z.opens_at ? ' \u00B7 opens ' + dt(z.opens_at) : '') + (z.closes_at ? ' \u00B7 closes ' + dt(z.closes_at) : '') + ' \u00B7 ' + na.n + ' started')), el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap' }, qb, rb, pb, db)));
       });
     }
-    function back() { return el('button', { type: 'button', class: 'pm-btn', onclick: function () { refresh().catch(function () { }); } }, '\u2190 Back to tests'); }
+    function back() { return el('button', { type: 'button', class: 'pm-btn', onclick: function () { refresh().catch(function () { }); } }, u.ico('back'), 'Back to tests'); }
     async function openQuestions(z) {
       u.clear(out); u.msg(msgBox, ''); out.appendChild(back()); out.appendChild(el('h3', {}, z.title + ' \u00B7 questions'));
       var holder = el('div', {}, el('div', { class: 'pm-muted' }, 'Loading\u2026')); out.appendChild(holder);
@@ -172,7 +172,7 @@
         var del = el('button', { type: 'button', class: 'pm-btn bad', disabled: started }, 'Delete');
         del.onclick = async function () { var d = await sb().from('quiz_questions').delete().eq('id', q.id); if (d.error) return u.msg(msgBox, u.friendly(d.error), 'err'); qCount[z.id] = Math.max(0, (qCount[z.id] || 1) - 1); openQuestions(z); };
         holder.appendChild(el('div', { class: 'pm-row', style: 'display:block' }, el('div', { style: 'display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap' }, el('b', { style: 'overflow-wrap:anywhere' }, (i + 1) + '. ' + q.question + ' (' + q.marks + ')'), del),
-          q.options.map(function (o, k) { return el('div', { style: 'margin:3px 0;font-size:14px;' + (k === q.correct ? 'color:#2fb37c;font-weight:600' : '') }, LET[k] + ') ' + o + (k === q.correct ? ' \u2714' : '')); })));
+          q.options.map(function (o, k) { return el('div', { style: 'margin:3px 0;font-size:14px;' + (k === q.correct ? 'color:#2fb37c;font-weight:600' : '') }, LET[k] + ') ' + o, k === q.correct ? [' ', u.ico('check', '#2fb37c')] : null); })));
       });
       if (started) return;
       var qt = el('textarea', { class: 'pm-in', rows: '2', maxlength: '1000', placeholder: 'Question' }), os = [0, 1, 2, 3, 4, 5].map(function (k) { return el('input', { class: 'pm-in', maxlength: '300', placeholder: 'Option ' + LET[k] + (k > 3 ? ' (optional)' : '') }); }), rad = [0, 1, 2, 3, 4, 5].map(function (k) { return el('input', { type: 'radio', name: 'corr', value: String(k), 'aria-label': 'Correct answer ' + LET[k] }); }), mk = el('input', { class: 'pm-in', type: 'number', min: '0.5', max: '100', step: '0.5', value: '1', style: 'max-width:100px' }), ex = el('input', { class: 'pm-in', maxlength: '1000', placeholder: 'Explanation (optional, shown after the test)' }), add1 = el('button', { type: 'button', class: 'pm-btn pri' }, 'Add question');
@@ -234,6 +234,6 @@
     var tn = findCard('Add a special note');
     if (tn && !root.querySelector('#pq-teacher')) { var p = staffPanel({ admin: false }), a = root.querySelector('#ph-teacher') || root.querySelector('#pm-teacher') || root.querySelector('#pa-teacher'); if (a) a.after(p); else (tn.closest('.cols2') || tn).after(p); }
   }
-  function start() { var root = document.getElementById('ss-root'); if (!root) return; var t = 0; new MutationObserver(function () { clearTimeout(t); t = setTimeout(inject, 400); }).observe(root, { childList: true, subtree: true }); inject(); }
+  function start() { var root = document.getElementById('ss-root'); if (!root) return; if (window.PhotonUI && window.PhotonUI.onMount) window.PhotonUI.onMount(inject); inject(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

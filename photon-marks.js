@@ -48,6 +48,13 @@
     return e;
   }
   function sb() { return window.photonSupabase; }
+  var ICO = { check: '<path d="M20 6 9 17l-5-5"/>', x: '<path d="M18 6 6 18M6 6l12 12"/>', back: '<path d="M19 12H5M12 19l-7-7 7-7"/>' };
+  function ico(n, color) {
+    var s = document.createElement('span'); s.setAttribute('aria-hidden', 'true');
+    s.style.cssText = 'display:inline-block;width:1.1em;height:1.1em;vertical-align:-.2em;margin-right:.3em;' + (color ? 'color:' + color : '');
+    s.innerHTML = '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICO[n] + '</svg>';
+    return s;
+  }
   function num(v) { var n = Number(v); return isFinite(n) ? n : null; }
   function pct(m, mx) { return mx > 0 ? Math.round((m / mx) * 1000) / 10 : 0; }
   function avg(a) { return a.length ? Math.round((a.reduce(function (x, y) { return x + y; }, 0) / a.length) * 10) / 10 : null; }
@@ -277,7 +284,7 @@
 
     async function openMarks(t) {
       clear(out); msg(msgBox, '');
-      out.appendChild(el('button', { type: 'button', class: 'pm-btn', onclick: function () { refresh().catch(function () { }); } }, '\u2190 Back to tests'));
+      out.appendChild(el('button', { type: 'button', class: 'pm-btn', onclick: function () { refresh().catch(function () { }); } }, ico('back'), 'Back to tests'));
       out.appendChild(el('h3', {}, t.title + ' \u00B7 ' + t.subject + ' \u00B7 out of ' + t.max_marks));
       var holder = el('div', {}, el('div', { class: 'pm-muted' }, 'Loading students\u2026')); out.appendChild(holder);
       try {
@@ -325,7 +332,7 @@
     return card;
   }
 
-  window.PhotonUI = { lineChart: lineChart, colorFor: colorFor, bandSlices: bandSlices, shortDate: shortDate, pct: pct, el: el, clear: clear, pieChart: pieChart, hbars: hbars, statBox: statBox, chartBox: chartBox, field: field, sel: sel, uniq: uniq, numSort: numSort, fmtDate: fmtDate, msg: msg, friendly: friendly, num: num, avg: avg, loadStudents: loadStudents, sb: sb };
+  window.PhotonUI = { onMount: onMount, ico: ico, lineChart: lineChart, colorFor: colorFor, bandSlices: bandSlices, shortDate: shortDate, pct: pct, el: el, clear: clear, pieChart: pieChart, hbars: hbars, statBox: statBox, chartBox: chartBox, field: field, sel: sel, uniq: uniq, numSort: numSort, fmtDate: fmtDate, msg: msg, friendly: friendly, num: num, avg: avg, loadStudents: loadStudents, sb: sb };
   window.photonAdminMarks = function (view) { clear(view); studentsPromise = null; view.appendChild(staffPanel({ admin: true })); };
 
   /* ---------------- mounting in Student Space ---------------- */
@@ -353,11 +360,21 @@
       if (anchorT) anchorT.after(p); else (tn.closest('.cols2') || tn).after(p);
     }
   }
+  /* One shared watcher for every Student Space module. It wakes up only when real elements are added
+     (not when the clock changes a text every second), so low-end phones are not kept busy. */
+  var mountFns = [], mountObs = null, mountTimer = 0;
+  function runMounts() { mountFns.forEach(function (f) { try { f(); } catch (e) { } }); }
+  function onMount(fn) {
+    mountFns.push(fn);
+    var root = document.getElementById('ss-root'); if (!root || mountObs) return;
+    mountObs = new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) { var a = muts[i].addedNodes; for (var j = 0; j < a.length; j++) if (a[j].nodeType === 1) { clearTimeout(mountTimer); mountTimer = setTimeout(runMounts, 350); return; } }
+    });
+    mountObs.observe(root, { childList: true, subtree: true });
+  }
   function start() {
     var root = document.getElementById('ss-root'); if (!root) return;
-    var timer = 0;
-    new MutationObserver(function () { clearTimeout(timer); timer = setTimeout(inject, 200); }).observe(root, { childList: true, subtree: true });
-    inject();
+    onMount(inject); inject();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

@@ -511,7 +511,9 @@
     var root = document.getElementById('ss-root');
     if (!root) return;
     var timer = 0;
-    new MutationObserver(function () { clearTimeout(timer); timer = setTimeout(injectTeacher, 250); }).observe(root, { childList: true, subtree: true });
+    new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) { var a = muts[i].addedNodes; for (var j = 0; j < a.length; j++) if (a[j].nodeType === 1) { clearTimeout(timer); timer = setTimeout(injectTeacher, 250); return; } }
+    }).observe(root, { childList: true, subtree: true });
     injectTeacher();
   }
 
