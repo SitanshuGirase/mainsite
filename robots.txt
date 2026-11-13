@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /mainsite/admin.html
+
+Sitemap: https://sitanshugirase.github.io/mainsite/sitemap.xml
