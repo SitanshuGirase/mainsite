@@ -1,0 +1,65 @@
+/* ===================================================================
+   Photon Academy - theme layer (typography, borders, spacing)
+   Loaded LAST on index.html and admin.html. To undo everything in this file, delete its <link> line.
+   Change a font or border in ONE place below:
+     --ph-head  heading font (serif)      --ph-body  text font (sans)
+     --ph-line  card/box border colour    --ph-rule  thin divider colour    --ph-w  border width
+   =================================================================== */
+:root {
+  --ph-head: 'Newsreader', 'Noto Serif Devanagari', Georgia, 'Times New Roman', serif;
+  --ph-body: 'Inter', 'Noto Sans Devanagari', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ph-line: rgba(238, 242, 251, .38);
+  --ph-rule: rgba(238, 242, 251, .24);
+  --ph-w: 2px;        /* main cards and boxes */
+  --ph-w-thin: 1px;   /* inputs, chips, dividers */
+}
+html[data-theme="light"] {
+  --ph-line: rgba(15, 27, 51, .62);
+  --ph-rule: rgba(15, 27, 51, .3);
+}
+
+/* ---------------- STUDENT SPACE, TEACHER DESK, PARENT SPACE, STUDENT LOGIN ---------------- */
+#student-space { font-family: var(--ph-body); font-size: 15.5px; line-height: 1.6; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+#student-space :is(input, select, textarea, button) { font-family: inherit; }
+#student-space :is(h1, h2, h3) { font-family: var(--ph-head) !important; font-weight: 600 !important; letter-spacing: -.012em !important; line-height: 1.2; }
+#student-space h1 { font-size: clamp(26px, 3.4vw, 34px); margin: 0 0 10px; }
+#student-space .box h1 { font-size: 28px; margin-bottom: 8px; }
+#student-space :is(.card, .pm-card, .pa-card, .pn-card) h2 { font-size: 21px; margin: 0 0 16px; padding-bottom: 10px; border-bottom: var(--ph-w-thin) solid var(--ph-line); }
+#student-space h3 { font-size: 17px; margin: 14px 0 8px; }
+
+/* cards, hero and login box: dark, clearly visible borders */
+#student-space :is(.card, .box, .top, .pm-card, .pa-card, .pn-card) { border: var(--ph-w) solid var(--ph-line) !important; }
+#student-space :is(.card, .pm-card, .pa-card, .pn-card) { padding: 22px; }
+#student-space :is(.pm-chart, .pm-tbl th, .pm-tbl td) { border-color: var(--ph-rule); }
+#student-space .pm-chart { border: var(--ph-w-thin) solid var(--ph-line); }
+#student-space :is(input, select, textarea) { border: var(--ph-w-thin) solid var(--ph-line) !important; }
+#student-space .chip { border: var(--ph-w-thin) solid var(--ph-line); }
+
+/* the jump bar (chips) */
+.ss-jump a { font-family: var(--ph-body) !important; font-weight: 600; font-size: 13px; letter-spacing: .01em; border: var(--ph-w-thin) solid var(--ph-line) !important; }
+
+/* the clock: calm, not the loudest thing on the page */
+#student-space .clock { font-family: var(--ph-body); font-size: clamp(20px, 2.4vw, 26px) !important; font-weight: 600 !important; letter-spacing: .01em; opacity: .85; }
+#student-space .dl { font-size: 13.5px; }
+
+/* charts: outlined, readable (pie outlines use the current text colour, so they are dark on light and light on dark) */
+.pm-pie svg { overflow: visible; flex: none; }
+.pm-legend { font-family: var(--ph-body); }
+.pm-legend i { border: 1px solid currentColor; box-sizing: border-box; }
+.pm-track { border: 1px solid rgba(127, 127, 127, .85); box-sizing: border-box; }
+.pm-chart { border: 1px solid rgba(127, 127, 127, .7); }
+
+/* ---------------- ADMIN PANEL + ADMIN LOGIN ---------------- */
+#app, #login { --line: #3f5a8c; --line2: #35507f; --muted: #b6c4de; --text: #f1f6ff; font-family: var(--ph-body); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-size: 15px; }
+#app :is(input, select, textarea, button), #login :is(input, select, textarea, button) { font-family: inherit; }
+#app :is(h1, h2, h3), #login h1 { font-family: var(--ph-head) !important; font-weight: 600 !important; letter-spacing: -.012em; line-height: 1.2; }
+#app .topbar h1 { font-size: 26px; }
+#app .card h2 { font-size: 21px; margin-bottom: 10px; }
+#app .dlg-head h2 { font-size: 21px; }
+#login .login-card h1 { font-size: 30px; }
+#app .muted, #login .muted { font-size: 14px; }
+#app .card, #login .login-card { border: var(--ph-w) solid var(--line) !important; }
+#app :is(.pd-card, .ai-card, .pb-card, .pi-card, .pm-card, .pa-card, .pn-card) { border: var(--ph-w) solid var(--line) !important; padding: 20px; }
+#app :is(.pd-card, .ai-card, .pb-card, .pi-card, .pm-card, .pa-card, .pn-card) h2 { font-size: 21px; margin-bottom: 8px; }
+#app :is(input, select, textarea) { border-color: var(--line); }
+#app .nav a { font-size: 15px; }

@@ -208,7 +208,7 @@ function weekEl(){
 }
 function hwEl(){
   const hw=D.items.filter(i=>i.kind==='homework').sort(asc);
-  const c=el('div',{class:'card'},el('h2',{},'Homework'));
+  const c=el('div',{class:'card'},el('h2',{},'Homework checklist'));
   if(!hw.length){c.append(el('div',{class:'empty'},'No homework right now.'));return c}
   hw.forEach(i=>{const d=left(i.due_at),isDone=D.done.has(i.id);
     const cb=el('input',{type:'checkbox',style:'width:22px;height:22px;min-height:0;padding:0;border:0;background:none;accent-color:#4fd6e8;margin:2px 12px 0 0;flex:none'});cb.checked=isDone;

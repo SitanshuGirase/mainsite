@@ -114,18 +114,21 @@
   function pieChart(slices) {
     var tot = slices.reduce(function (a, s) { return a + s.value; }, 0);
     if (!tot) return el('div', { class: 'pm-muted' }, 'No data yet.');
-    var svg = S('svg', { viewBox: '0 0 120 120', width: '120', height: '120', role: 'img', 'aria-label': 'Pie chart' }), a0 = -Math.PI / 2;
+    var svg = S('svg', { viewBox: '0 0 120 120', width: '150', height: '150', role: 'img', 'aria-label': 'Pie chart' }), a0 = -Math.PI / 2, labels = [], ln = { stroke: 'currentColor', 'stroke-width': '1.6', 'stroke-linejoin': 'round' };
     slices.forEach(function (s) {
       if (s.value <= 0) return;
       var f = s.value / tot, node;
-      if (f >= 0.9999) node = S('circle', { cx: 60, cy: 60, r: 55, fill: s.color });
+      if (f >= 0.9999) { node = S('circle', Object.assign({ cx: 60, cy: 60, r: 55, fill: s.color }, ln)); labels.push([60, 64, '100%']); }
       else {
         var a1 = a0 + f * 2 * Math.PI;
-        node = S('path', { d: 'M60 60 L' + (60 + 55 * Math.cos(a0)).toFixed(2) + ' ' + (60 + 55 * Math.sin(a0)).toFixed(2) + ' A55 55 0 ' + (f > 0.5 ? 1 : 0) + ' 1 ' + (60 + 55 * Math.cos(a1)).toFixed(2) + ' ' + (60 + 55 * Math.sin(a1)).toFixed(2) + ' Z', fill: s.color });
+        if (f >= 0.07) labels.push([60 + 34 * Math.cos((a0 + a1) / 2), 64 + 34 * Math.sin((a0 + a1) / 2), Math.round(f * 100) + '%']);
+        node = S('path', Object.assign({ d: 'M60 60 L' + (60 + 55 * Math.cos(a0)).toFixed(2) + ' ' + (60 + 55 * Math.sin(a0)).toFixed(2) + ' A55 55 0 ' + (f > 0.5 ? 1 : 0) + ' 1 ' + (60 + 55 * Math.cos(a1)).toFixed(2) + ' ' + (60 + 55 * Math.sin(a1)).toFixed(2) + ' Z', fill: s.color }, ln));
         a0 = a1;
       }
       var ti = S('title', {}); ti.textContent = s.label + ': ' + s.value; node.appendChild(ti); svg.appendChild(node);
     });
+    svg.appendChild(S('circle', { cx: 60, cy: 60, r: 55, fill: 'none', stroke: 'currentColor', 'stroke-width': '2.4' }));
+    labels.forEach(function (l) { var t = S('text', { x: l[0].toFixed(1), y: l[1].toFixed(1), 'text-anchor': 'middle', style: 'font:700 11px Inter,system-ui,sans-serif;fill:#fff;stroke:rgba(0,0,0,.65);stroke-width:2.6px;paint-order:stroke;pointer-events:none' }); t.textContent = l[2]; svg.appendChild(t); });
     return el('div', { class: 'pm-pie' }, svg, el('div', { class: 'pm-legend' }, slices.map(function (s) {
       return el('div', {}, el('i', { style: 'background:' + s.color }), s.label + ' \u00B7 ' + s.value + ' (' + Math.round(s.value * 100 / tot) + '%)');
     })));
