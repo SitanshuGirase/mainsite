@@ -455,8 +455,10 @@ async function teacherDesk(session,data){
   show(el('div',{class:'page'},hero,stuCard,el('div',{class:'cols2'},assignCard,itemsBox),el('div',{class:'cols2'},noteForm,notesBox),chBox));
   loadItems();loadNotes();loadDay();
 }
+let claimUid=null;
 async function status(session){
   const uid=session.user.id;setOut(true);timers.forEach(clearInterval);timers=[];
+  if(claimUid!==uid){claimUid=uid;try{await sb.rpc('claim_my_roster')}catch(e){}}
   const {data,error}=await sb.from('profiles').select('display_name,role,student_status,class_name,division,board,school,dob,phone,parent_name,parent_phone,address,photo_path').eq('id',uid).single();
   if(error||!data){show(el('div',{class:'box'},el('h1',{},'Something went wrong'),el('p',{},'Please try again in a moment.')));return}
   P=data;UID=uid;const s=data.student_status;
