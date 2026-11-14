@@ -28,9 +28,74 @@
     '.ai-code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:rgba(127,127,127,.18);border-radius:6px;padding:1px 6px}',
     '.ai-btn{border:1px solid rgba(127,127,127,.5);background:transparent;color:inherit;border-radius:10px;padding:8px 14px;font:inherit;font-size:13.5px;cursor:pointer}',
     '.ai-btn.pri{background:#4fd6e8;border-color:#4fd6e8;color:#06202a;font-weight:600}.ai-btn:disabled{opacity:.5;cursor:not-allowed}',
-    '.ai-msg{min-height:20px;margin-top:8px;font-size:13.5px}'
+    '.ai-msg{min-height:20px;margin-top:8px;font-size:13.5px}',
+    '.au-card{margin-bottom:16px}.au-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}',
+    '.au-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}',
+    '.au-tile{border:1.5px solid var(--line,rgba(127,127,127,.6));border-radius:12px;padding:10px 14px}.au-tile b{display:block;font-size:28px;line-height:1.15;font-family:var(--ph-head,Georgia,serif)}.au-tile span{display:block;font-size:13.5px}.au-tile small{display:block;opacity:.75;font-size:12.5px;margin-top:2px}',
+    '.au-chart{display:flex;align-items:flex-end;gap:4px;overflow-x:auto;padding:22px 18px 4px 2px;border-bottom:1.5px solid var(--line,rgba(127,127,127,.6));min-height:150px;max-width:100%}',
+    '.au-col{flex:1 0 20px;min-width:20px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}',
+    '.au-stack{width:100%;max-width:34px;display:flex;flex-direction:column;border:1px solid rgba(127,127,127,.9);border-radius:4px 4px 0 0;overflow:hidden;box-sizing:border-box}.au-stack.au-zero{border:0}',
+    '.au-ok{background:#4fd6e8}.au-bad{background:#ff7b7b}.au-n{font-size:11px;margin-bottom:2px}.au-d{font-size:11px;opacity:.8;margin-top:4px;white-space:nowrap;height:14px}',
+    '.au-leg{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin:10px 0}.au-leg i{display:inline-block;width:12px;height:12px;border:1px solid rgba(127,127,127,.9);border-radius:3px;margin-right:6px;vertical-align:-2px}',
+    '.au-tbl{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:8px}.au-tbl th,.au-tbl td{text-align:left;padding:6px 10px;border-bottom:1px solid rgba(127,127,127,.35)}.au-wrap{overflow-x:auto;max-width:100%}'
   ].join('\n'); document.head.appendChild(css);
  
+  var IST = 5.5 * 3600000, MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function istDay(back) { return new Date(Date.now() + IST - back * 86400000).toISOString().slice(0, 10); }
+  function dayLabel(s) { var p = String(s).split('-'); return Number(p[2]) + ' ' + MON[Number(p[1]) - 1]; }
+  function hr(x) { return (x % 12 || 12) + ' ' + (x >= 12 && x < 24 ? 'pm' : 'am'); }
+  function pctOf(a, b) { return b ? Math.round(a * 100 / b) + '%' : '0%'; }
+  function tile(n, label, sub) { return el('div', { class: 'au-tile' }, el('b', {}, n), el('span', {}, label), sub ? el('small', {}, sub) : null); }
+  function usageCard() {
+    var days = 30, card = el('div', { class: 'ai-card au-card' }), body = el('div', {}), tabs = el('div', { class: 'au-tabs' });
+    [7, 30, 90].forEach(function (n) {
+      var b = el('button', { type: 'button', 'data-n': String(n), class: 'ai-btn' + (n === days ? ' pri' : ''), onclick: function () {
+        days = n; [].forEach.call(tabs.children, function (x) { x.className = 'ai-btn' + (Number(x.getAttribute('data-n')) === days ? ' pri' : ''); }); load();
+      } }, 'Last ' + n + ' days');
+      tabs.appendChild(b);
+    });
+    card.appendChild(el('h2', {}, 'AI usage'));
+    card.appendChild(el('div', { class: 'ai-muted' }, 'How many questions students and visitors asked the AI assistant. Times are India time. What people asked is never stored.'));
+    card.appendChild(tabs); card.appendChild(body);
+    async function load() {
+      while (body.firstChild) body.removeChild(body.firstChild);
+      body.appendChild(el('div', { class: 'ai-muted' }, 'Loading\u2026'));
+      var r;
+      try { r = await window.photonSupabase.rpc('admin_ai_usage', { p_days: days }); } catch (e) { r = { error: e }; }
+      while (body.firstChild) body.removeChild(body.firstChild);
+      if (r.error || !r.data) { body.appendChild(el('div', { class: 'ai-muted' }, 'Could not load the usage numbers. Make sure you are signed in as an admin.')); return; }
+      var d = r.data, total = d.total || 0, blocked = d.blocked || 0;
+      if (!total) { body.appendChild(el('div', { class: 'ai-muted', style: 'margin:12px 0' }, 'No questions have been recorded in this period yet. Counting started on 14 Nov 2026, so earlier questions are not included.')); }
+      else {
+        body.appendChild(el('div', { class: 'au-tiles' },
+          tile(total, 'Questions asked', 'in the last ' + days + ' days'),
+          tile(d.last_24h || 0, 'Last 24 hours'),
+          tile(blocked, 'Blocked by the rate limit', pctOf(blocked, total) + ' of all questions'),
+          tile(d.users || 0, 'From signed-in users', pctOf(d.users || 0, total)),
+          tile(d.visitors || 0, 'From website visitors', pctOf(d.visitors || 0, total))));
+        var byDay = {}, max = 1; (d.daily || []).forEach(function (x) { byDay[x.day] = x; if (x.total > max) max = x.total; });
+        var chart = el('div', { class: 'au-chart', role: 'img', 'aria-label': 'Questions per day' });
+        for (var i = days - 1; i >= 0; i--) {
+          var key = istDay(i), x = byDay[key] || { total: 0, blocked: 0 }, h = x.total ? Math.max(4, Math.round(x.total * 110 / max)) : 0, hb = x.blocked ? Math.max(3, Math.round(x.blocked * 110 / max)) : 0;
+          var showLbl = days <= 14 || i % 5 === 0 || i === 0;
+          chart.appendChild(el('div', { class: 'au-col', title: dayLabel(key) + ': ' + x.total + ' question' + (x.total === 1 ? '' : 's') + (x.blocked ? ', ' + x.blocked + ' blocked' : '') },
+            el('span', { class: 'au-n' }, x.total || ''),
+            el('div', { class: 'au-stack' + (x.total ? '' : ' au-zero'), style: 'height:' + h + 'px' }, hb ? el('div', { class: 'au-bad', style: 'height:' + hb + 'px' }) : null, el('div', { class: 'au-ok', style: 'flex:1' })),
+            el('span', { class: 'au-d' }, showLbl ? dayLabel(key) : '')));
+        }
+        body.appendChild(el('div', { class: 'au-wrap' }, chart));
+        body.appendChild(el('div', { class: 'au-leg' }, el('span', {}, el('i', { class: 'au-ok' }), 'Answered'), el('span', {}, el('i', { class: 'au-bad' }), 'Blocked (someone asked too many questions in one minute)')));
+        if (d.busiest_hour) body.appendChild(el('p', { style: 'margin:6px 0' }, el('b', {}, 'Busiest time of day: '), hr(d.busiest_hour.hour) + ' to ' + hr((d.busiest_hour.hour + 1) % 24) + ' (' + d.busiest_hour.count + ' questions in this period).'));
+        var rows = (d.daily || []).slice().reverse();
+        body.appendChild(el('details', { class: 'ai-muted', style: 'margin-top:8px' }, el('summary', {}, 'Show the numbers as a table'),
+          el('div', { class: 'au-wrap' }, el('table', { class: 'au-tbl' }, el('thead', {}, el('tr', {}, ['Day', 'Questions', 'Signed-in', 'Visitors', 'Blocked'].map(function (h) { return el('th', {}, h); }))),
+            el('tbody', {}, rows.map(function (x) { return el('tr', {}, [dayLabel(x.day), x.total, x.users, x.visitors, x.blocked].map(function (c) { return el('td', {}, c); })); }))))));
+      }
+      body.appendChild(el('p', { class: 'ai-muted', style: 'margin:12px 0 0' }, 'Not tracked yet: which AI provider answered, how many tokens were used, and whether a key is free or paid. Your connected keys are free-tier today. Provider, token and cost tracking for a paid key is the planned next step.'));
+    }
+    load(); return card;
+  }
+
   async function ask(action) {
     var sb = window.photonSupabase;
     if (!sb) throw new Error('Not signed in.');
@@ -43,6 +108,7 @@
   window.photonAdminAI = function (view) {
     while (view.firstChild) view.removeChild(view.firstChild);
     var card = el('div', { class: 'ai-card' }, el('h2', {}, 'AI providers'), el('div', { class: 'ai-muted' }, 'Loading\u2026'));
+    view.appendChild(usageCard());
     view.appendChild(card);
     ask('ai_status').then(function (d) {
       var on = d.providers.filter(function (p) { return p.keys > 0; });
