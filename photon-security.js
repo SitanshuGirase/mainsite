@@ -26,6 +26,8 @@
 
   var ROLE = { admin: 'Admin', teacher: 'Teacher', student: 'Student', parent: 'Parent' };
   var ACTION = { made_admin: 'made an admin', removed_admin: 'admin rights removed', set_staff: 'staff access set', removed_staff: 'staff access removed', made_owner: 'made an owner', removed_owner: 'ownership removed' };
+  var FEE = { insert: 'added', update: 'changed', delete: 'deleted' };
+  function feeWord(a) { var k = String(a || '').toLowerCase(); return FEE[k] || k.replace(/_/g, ' '); }
   function when(s) { if (!s) return 'never'; try { return new Date(s).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return String(s); } }
   function ago(s) {
     if (!s) return 'never'; var m = Math.round((Date.now() - new Date(s).getTime()) / 60000);
@@ -79,7 +81,7 @@
       body.appendChild(section('Recent admin changes', 'Who gave or removed admin and staff access.',
         ac.length ? table(['When', 'Who did it', 'What happened', 'To'], ac.map(function (x) { return [when(x.at), x.actor || 'unknown', (ACTION[x.action] || String(x.action || '').replace(/_/g, ' ')) + (x.detail ? ' (' + x.detail + ')' : ''), x.target || '']; })) : el('div', { class: 'sc-muted', style: 'margin-top:8px' }, 'No changes recorded yet.')));
       body.appendChild(section('Recent fee changes', 'The latest recorded fee actions.',
-        fc.length ? table(['When', 'Who did it', 'What happened', 'Record type'], fc.map(function (x) { return [when(x.at), x.actor, String(x.action || '').replace(/_/g, ' '), String(x.entity || '').replace(/_/g, ' ')]; })) : el('div', { class: 'sc-muted', style: 'margin-top:8px' }, 'No fee changes recorded yet.')));
+        fc.length ? table(['When', 'Who did it', 'What happened', 'Record type'], fc.map(function (x) { return [when(x.at), x.actor, feeWord(x.action), String(x.entity || '').replace(/_/g, ' ')]; })) : el('div', { class: 'sc-muted', style: 'margin-top:8px' }, 'No fee changes recorded yet.')));
 
       body.appendChild(el('div', { class: 'sc-card' }, el('h2', {}, 'What this page cannot show'),
         el('div', { class: 'sc-muted' }, 'Failed Google sign-ins are not visible, because they happen at Google, not in your system. Past sign-ins are not kept once a session ends. A permanent sign-in history is possible as a later add-on. To lock someone out right now, remove their access in Admins & access.')));
