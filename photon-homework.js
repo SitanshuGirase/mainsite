@@ -16,6 +16,42 @@
   function isLate(sub, hw) { return sub && sub.submitted_at && sub.submitted_at.slice(0, 10) > hw.due_date; }
   function badge(el, st) { var s = STAT[st] || STAT.none; return el('span', { class: 'pm-badge ' + s[1] }, s[0]); }
   function safeLink(url) { return /^https:\/\//i.test(url || '') ? url : null; }
+  /* ---------- homework photos (private Supabase bucket; each student only writes in their own folder) ---------- */
+  var BUCKET = 'homework-photos', MAXP = 4;
+  function rid() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + '' + Math.random().toString(36).slice(2)); }
+  // shrink a photo before sending: longest side 1600px, JPEG, under about 2.6 MB (the limit is 3 MB)
+  function compress(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var w = img.naturalWidth, h = img.naturalHeight; if (!w || !h) return rej(new Error('bad'));
+        var sc = Math.min(1, 1600 / Math.max(w, h)), cw = Math.round(w * sc), ch = Math.round(h * sc), c = document.createElement('canvas'), q = 0.82;
+        c.width = cw; c.height = ch; var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, cw, ch); x.drawImage(img, 0, 0, cw, ch);
+        (function go() { c.toBlob(function (b) { if (!b) return rej(new Error('bad')); if (b.size > 2.6 * 1024 * 1024 && q > 0.4) { q -= 0.12; return go(); } res(b); }, 'image/jpeg', q); })();
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('bad')); };
+      img.src = url;
+    });
+  }
+  async function signed(paths) {
+    var m = {}; if (!paths || !paths.length) return m;
+    try { var r = await sb().storage.from(BUCKET).createSignedUrls(paths, 600); (r.data || []).forEach(function (x) { if (x && x.signedUrl && x.path) m[x.path] = x.signedUrl; }); } catch (e) { }
+    return m;
+  }
+  function thumb(url, label, onRemove) {
+    var el = U().el, img = el('img', { src: url, alt: label, loading: 'lazy', style: 'width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid rgba(127,127,127,.55);display:block' });
+    var box = el('div', { style: 'position:relative;display:inline-block' }, /^(https:|blob:)/.test(url) ? el('a', { href: url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'Open ' + label }, img) : img);
+    if (onRemove) box.appendChild(el('button', { type: 'button', 'aria-label': 'Remove ' + label, onclick: onRemove, style: 'position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:1px solid rgba(127,127,127,.7);background:#fff;color:#111;cursor:pointer;line-height:1;font-size:15px;padding:0' }, '\u00D7'));
+    return box;
+  }
+  // read-only strip for teachers / admins (filled in after the web addresses arrive)
+  function photoStrip(paths) {
+    var el = U().el, box = el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin:6px 0' });
+    if (!paths || !paths.length) return null;
+    signed(paths).then(function (m) { paths.forEach(function (p, i) { if (m[p]) box.appendChild(thumb(m[p], 'Photo ' + (i + 1))); }); if (!box.firstChild) box.appendChild(el('span', { class: 'pm-muted' }, 'Photos could not be loaded.')); });
+    return box;
+  }
   function errText(e) { var m = (e && e.message) || ''; return /already reviewed|Marks cannot|must start with|no marks/i.test(m) ? m : U().friendly(e); }
 
   /* ---------- student ---------- */
@@ -45,20 +81,50 @@
           if (!sub || sub.status !== 'reviewed') {
             var ans = el('textarea', { class: 'pm-in', rows: '4', maxlength: '4000', placeholder: 'Type your answer (optional if you add a link)', 'aria-label': 'Answer for ' + hw.title }, sub && sub.answer ? sub.answer : '');
             var link = el('input', { class: 'pm-in', maxlength: '500', placeholder: 'https:// link to your work (Google Drive, photo link) - optional', value: sub && sub.link ? sub.link : '', 'aria-label': 'Link for ' + hw.title });
+            var kept = (sub && sub.photos ? sub.photos.slice() : []), added = [], removedPaths = [], urlMap = {};
+            var strip = el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' });
+            var pick = el('input', { type: 'file', accept: 'image/*', multiple: '', 'aria-label': 'Add photos of your work for ' + hw.title, style: 'max-width:100%' });
+            function drawStrip() {
+              u.clear(strip);
+              kept.forEach(function (p, i) { if (urlMap[p]) strip.appendChild(thumb(urlMap[p], 'Photo ' + (i + 1), function () { kept = kept.filter(function (x) { return x !== p; }); removedPaths.push(p); drawStrip(); })); });
+              added.forEach(function (it, i) { strip.appendChild(thumb(it.url, 'New photo ' + (i + 1), function () { added = added.filter(function (x) { return x !== it; }); URL.revokeObjectURL(it.url); drawStrip(); })); });
+            }
+            if (kept.length) signed(kept).then(function (m) { urlMap = m; drawStrip(); });
+            pick.onchange = async function () {
+              var files = Array.prototype.slice.call(pick.files || []); pick.value = '';
+              for (var i = 0; i < files.length; i++) {
+                if (kept.length + added.length >= MAXP) { u.msg(msgBox, 'You can add up to ' + MAXP + ' photos.', 'err'); break; }
+                if (!/^image\//.test(files[i].type || '')) { u.msg(msgBox, 'Only photos can be added here.', 'err'); continue; }
+                u.msg(msgBox, 'Preparing photo\u2026');
+                try { var b = await compress(files[i]); added.push({ blob: b, url: URL.createObjectURL(b) }); u.msg(msgBox, ''); } catch (e) { u.msg(msgBox, 'Could not read that photo. Please try a JPG or PNG.', 'err'); }
+              }
+              drawStrip();
+            };
             var btn = el('button', { type: 'button', class: 'pm-btn pri' }, sub ? 'Resubmit' : 'Submit');
             btn.onclick = async function () {
               var a = ans.value.trim(), l = link.value.trim();
-              if (!a && !l) return u.msg(msgBox, 'Write an answer or add a link first.', 'err');
+              if (!a && !l && !kept.length && !added.length) return u.msg(msgBox, 'Write an answer, add a link or add a photo first.', 'err');
               if (l && !safeLink(l)) return u.msg(msgBox, 'The link must start with https://', 'err');
-              btn.disabled = true; u.msg(msgBox, 'Sending\u2026');
-              var r = await sb().from('homework_submissions').upsert({ homework_id: hw.id, student_id: uid, answer: a || null, link: l || null }, { onConflict: 'homework_id,student_id' }).select().single();
+              btn.disabled = true; u.msg(msgBox, added.length ? 'Uploading photos\u2026' : 'Sending\u2026');
+              var up = [];
+              async function undo() { if (up.length) { try { await sb().storage.from(BUCKET).remove(up); } catch (e) { } } }
+              try {
+                for (var i = 0; i < added.length; i++) {
+                  var path = uid + '/' + hw.id + '/' + rid() + '.jpg';
+                  var ur = await sb().storage.from(BUCKET).upload(path, added[i].blob, { contentType: 'image/jpeg', upsert: false });
+                  if (ur.error) throw ur.error; up.push(path);
+                }
+              } catch (e) { await undo(); btn.disabled = false; return u.msg(msgBox, 'A photo could not be uploaded. Nothing was submitted. Please try again.', 'err'); }
+              var r = await sb().from('homework_submissions').upsert({ homework_id: hw.id, student_id: uid, answer: a || null, link: l || null, photos: kept.concat(up) }, { onConflict: 'homework_id,student_id' }).select().single();
               btn.disabled = false;
-              if (r.error) return u.msg(msgBox, errText(r.error), 'err');
-              subs[hw.id] = r.data || Object.assign({}, sub || {}, { homework_id: hw.id, status: 'submitted', answer: a, link: l, submitted_at: new Date().toISOString() }); draw();
+              if (r.error) { await undo(); return u.msg(msgBox, errText(r.error), 'err'); }
+              if (removedPaths.length) { try { await sb().storage.from(BUCKET).remove(removedPaths); } catch (e) { } }
+              added.forEach(function (it) { URL.revokeObjectURL(it.url); });
+              subs[hw.id] = r.data || Object.assign({}, sub || {}, { homework_id: hw.id, status: 'submitted', answer: a, link: l, photos: kept.concat(up), submitted_at: new Date().toISOString() }); draw();
             };
-            row.appendChild(el('div', { style: 'margin-top:8px;display:grid;gap:8px' }, ans, link, el('div', {}, btn), msgBox));
-          } else if (sub.answer || sub.link) {
-            row.appendChild(el('div', { class: 'pm-muted', style: 'margin-top:6px' }, 'Your submission: ' + (sub.answer ? sub.answer.slice(0, 160) + (sub.answer.length > 160 ? '\u2026' : '') : '') + (sub.link ? ' (link added)' : '')));
+            row.appendChild(el('div', { style: 'margin-top:8px;display:grid;gap:8px' }, ans, link, el('div', { class: 'pm-muted' }, 'Photos of your work (up to ' + MAXP + ', optional)'), strip, pick, el('div', {}, btn), msgBox));
+          } else if (sub.answer || sub.link || (sub.photos && sub.photos.length)) {
+            row.appendChild(el('div', { class: 'pm-muted', style: 'margin-top:6px' }, 'Your submission: ' + (sub.answer ? sub.answer.slice(0, 160) + (sub.answer.length > 160 ? '\u2026' : '') : '') + (sub.link ? ' (link added)' : '') + (sub.photos && sub.photos.length ? ' (' + sub.photos.length + ' photo' + (sub.photos.length > 1 ? 's' : '') + ' added)' : '')));
           }
           card.appendChild(row);
         });
@@ -147,6 +213,7 @@
           holder.appendChild(el('div', { class: 'pm-row', style: 'display:block' }, el('div', {}, el('b', {}, s.name), badge(el, sub.status), isLate(sub, hw) ? el('span', { class: 'pm-badge off' }, 'late') : null),
             sub.answer ? el('div', { style: 'margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px' }, sub.answer) : null,
             lk ? el('div', {}, el('a', { href: lk, target: '_blank', rel: 'noopener noreferrer' }, 'Open the student\u2019s link')) : null,
+            photoStrip(sub.photos),
             el('div', { style: 'display:grid;gap:8px;margin-top:8px' }, mk, fb, el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap' }, ok, nc), m)));
         });
         if (!got) holder.appendChild(el('p', { class: 'pm-muted' }, 'No submissions yet.'));
