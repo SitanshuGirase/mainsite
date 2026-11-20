@@ -140,15 +140,39 @@
       clear(editBox);
       var card = el('div', { class: 'fs-card' }), res = el('div', {}), rmsg = el('div', { class: 'fs-msg' }), previewed = null;
       var clsSel = el('select', { class: 'fs-in', 'aria-label': 'Class' }, el('option', { value: '' }, 'All classes that match')); CLASSES.forEach(function (c) { clsSel.appendChild(el('option', { value: c }, 'Class ' + c)); });
+      var picked = [], MAXSEL = 300;
+      var modeSel = el('select', { class: 'fs-in', 'aria-label': 'Who to bill' }, el('option', { value: 'all' }, 'Everyone who matches'), el('option', { value: 'sel' }, 'Selected students only'));
+      var selBox = el('div', { style: 'display:none;margin:10px 0' }), chips = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;margin:8px 0' }), found = el('div', { class: 'fs-wrap tall' });
+      var sIn = el('input', { class: 'fs-in', type: 'search', placeholder: 'Search a student by name', 'aria-label': 'Search a student', maxlength: '60', style: 'width:100%;max-width:360px' }), sTimer = null;
+      function resetPrev() { previewed = null; goBtn.disabled = true; goBtn.textContent = 'Create fees'; clear(res); }
+      function drawChips() {
+        clear(chips); picked.forEach(function (p) { chips.appendChild(el('span', { class: 'fs-badge', style: 'margin:0' }, p.name + (p.cls ? ' \u00B7 ' + p.cls : '') + ' ', el('button', { type: 'button', class: 'fs-btn', style: 'padding:0 6px;margin-left:4px;border-radius:99px', 'aria-label': 'Remove ' + p.name, onclick: function () { picked = picked.filter(function (x) { return x.id !== p.id; }); drawChips(); resetPrev(); } }, '\u00D7'))); });
+        if (!picked.length) chips.appendChild(el('span', { class: 'fs-muted' }, 'No student chosen yet. Search by name and press Add.'));
+      }
+      function addPick(p) { if (picked.some(function (x) { return x.id === p.id; })) return; if (picked.length >= MAXSEL) { rsay('You can choose up to ' + MAXSEL + ' students at a time.', 'err'); return; } picked.push(p); drawChips(); resetPrev(); }
+      async function doSearch() {
+        var t = sIn.value.trim(); clear(found); if (t.length < 2) return;
+        var safe = t.replace(/[%_\\,()]/g, ' ').trim(); if (!safe) return;
+        var r; try { r = await sb().from('profiles').select('id,display_name,class_name,board,division').eq('role', 'student').ilike('display_name', '%' + safe + '%').order('display_name').limit(12); } catch (e) { r = { error: e }; }
+        if (r.error) { found.appendChild(el('div', { class: 'fs-muted' }, 'Search failed. Please try again.')); return; }
+        if (!(r.data || []).length) { found.appendChild(el('div', { class: 'fs-muted' }, 'No student found.')); return; }
+        found.appendChild(el('table', { class: 'fs-tbl' }, el('tbody', {}, r.data.map(function (p) { var cl = p.class_name ? 'Class ' + p.class_name + (p.board ? ' ' + p.board : '') + (p.division ? ' ' + p.division : '') : ''; return el('tr', {}, el('td', {}, p.display_name || '(no name)'), el('td', {}, cl), el('td', {}, el('button', { type: 'button', class: 'fs-btn', onclick: function () { addPick({ id: p.id, name: p.display_name || '(no name)', cls: cl }); } }, 'Add'))); }))));
+      }
+      sIn.addEventListener('input', function () { clearTimeout(sTimer); sTimer = setTimeout(doSearch, 350); });
+      selBox.appendChild(sIn); selBox.appendChild(found); selBox.appendChild(chips);
+      modeSel.addEventListener('change', function () { selBox.style.display = modeSel.value === 'sel' ? 'block' : 'none'; clsSel.style.display = modeSel.value === 'sel' ? 'none' : ''; resetPrev(); rsay(modeSel.value === 'sel' ? 'Choose the students, then press Preview.' : 'Press Preview.'); });
+      var pre = window.__feeInstStudent; window.__feeInstStudent = null;
       var pvBtn = el('button', { type: 'button', class: 'fs-btn' }, 'Preview (saves nothing)'), goBtn = el('button', { type: 'button', class: 'fs-btn pri', disabled: true }, 'Create fees'), closeBtn = el('button', { type: 'button', class: 'fs-btn', onclick: function () { clear(runBox); } }, 'Close');
       function rsay(t, k) { rmsg.textContent = t || ''; rmsg.className = 'fs-msg' + (k ? ' ' + k : ''); }
       clsSel.addEventListener('change', function () { previewed = null; goBtn.disabled = true; goBtn.textContent = 'Create fees'; clear(res); rsay('Class changed. Press Preview again.'); });
       pvBtn.addEventListener('click', async function () {
         pvBtn.disabled = true; goBtn.disabled = true; rsay('Checking\u2026'); clear(res);
-        var cls = clsSel.value || null, r; try { r = await sb().rpc('admin_generate_fee_schedule', { p_schedule: sc.id, p_class: cls, p_dry: true }); } catch (e) { r = { error: e }; }
+        var selMode = modeSel.value === 'sel', cls = selMode ? null : (clsSel.value || null), ids = selMode ? picked.map(function (p) { return p.id; }) : null, r;
+        if (selMode && !ids.length) { pvBtn.disabled = false; rsay('Choose at least one student first.', 'err'); return; }
+        try { r = await sb().rpc('admin_generate_fee_schedule', { p_schedule: sc.id, p_class: cls, p_dry: true, p_students: ids }); } catch (e) { r = { error: e }; }
         pvBtn.disabled = false;
         if (r.error) { rsay(why(r.error), 'err'); return; }
-        var d = r.data; previewed = { cls: cls, d: d }; rsay('This is only a preview. Nothing has been created.');
+        var d = r.data; previewed = { cls: cls, ids: ids, d: d }; rsay('This is only a preview. Nothing has been created.');
         res.appendChild(el('div', { class: 'fs-tiles' },
           el('div', { class: 'fs-tile' }, el('b', {}, d.students), el('span', {}, 'students will be billed')),
           el('div', { class: 'fs-tile' }, el('b', {}, d.new_dues), el('span', {}, 'new fees will be created')),
@@ -158,7 +182,7 @@
         if (!d.new_dues) res.appendChild(el('div', { class: 'fs-muted' }, d.students ? 'Every matching student already has these instalments, so there is nothing new to create.' : 'No approved student matches this fee structure for this class. Check the fee structure\u2019s class, board and division, and that students are approved.'));
         if ((d.per_installment || []).length && d.new_dues) res.appendChild(el('div', { class: 'fs-wrap' }, el('table', { class: 'fs-tbl' }, el('thead', {}, el('tr', {}, ['Instalment', 'Due', 'Fees', 'Total'].map(function (h) { return el('th', {}, h); }))),
           el('tbody', {}, d.per_installment.map(function (x) { return el('tr', {}, [el('td', {}, x.label), el('td', {}, dnice(x.due_date)), el('td', {}, x.new_count), el('td', {}, inr(x.new_total_paise))]); })))));
-        if ((d.people || []).length) res.appendChild(el('details', { class: 'fs-muted', style: 'margin-top:10px', open: d.people.length <= 8 }, el('summary', {}, 'Who is included (' + d.people.length + ')'),
+        if ((d.people || []).length) res.appendChild(el('details', { class: 'fs-muted', style: 'margin-top:10px', open: !!previewed.ids || d.people.length <= 8 }, el('summary', {}, 'Who is included (' + d.people.length + ')'),
           el('div', { class: 'fs-wrap tall' }, el('table', { class: 'fs-tbl' }, el('thead', {}, el('tr', {}, ['Student', 'Class', 'Yearly fee', 'New fees'].map(function (h) { return el('th', {}, h); }))),
             el('tbody', {}, d.people.map(function (p) { return el('tr', {}, [el('td', {}, p.name), el('td', {}, (p.class || '') + (p.division ? ' ' + p.division : '')), el('td', {}, inr(p.amount_paise)), el('td', {}, p.new_dues)]); }))))));
         goBtn.disabled = !d.new_dues; goBtn.textContent = d.new_dues ? 'Create ' + d.new_dues + ' fees (' + inr(d.new_total_paise) + ')' : 'Nothing to create';
@@ -168,14 +192,14 @@
         var d = previewed.d;
         if (!window.confirm('Create ' + d.new_dues + ' fees totalling ' + inr(d.new_total_paise) + ' for ' + d.students + ' student' + (d.students === 1 ? '' : 's') + '?\n\nThey will appear in each student\u2019s and parent\u2019s Fees section. Fees can be cancelled later but never deleted.')) return;
         goBtn.disabled = true; pvBtn.disabled = true; rsay('Creating\u2026');
-        var r; try { r = await sb().rpc('admin_generate_fee_schedule', { p_schedule: sc.id, p_class: previewed.cls, p_dry: false }); } catch (e) { r = { error: e }; }
+        var r; try { r = await sb().rpc('admin_generate_fee_schedule', { p_schedule: sc.id, p_class: previewed.cls, p_dry: false, p_students: previewed.ids }); } catch (e) { r = { error: e }; }
         pvBtn.disabled = false;
         if (r.error) { rsay(why(r.error), 'err'); goBtn.disabled = false; return; }
         clear(runBox); say('Created ' + r.data.new_dues + ' fees totalling ' + inr(r.data.new_total_paise) + ' for ' + r.data.students + ' student' + (r.data.students === 1 ? '' : 's') + '. Check them in Dues.', 'ok'); await loadAll();
       });
       card.appendChild(el('h2', {}, 'Create fees: ' + sc.name));
       card.appendChild(el('div', { class: 'fs-muted' }, 'Fee structure: ' + sc.plan_name + '. Only approved students whose class, board and division match that structure are included. Choose a class, then press Preview.'));
-      card.appendChild(el('div', { style: 'margin:10px 0' }, clsSel)); card.appendChild(el('div', { class: 'fs-acts' }, pvBtn, goBtn, closeBtn)); card.appendChild(rmsg); card.appendChild(res);
+      card.appendChild(el('div', { style: 'margin:10px 0' }, el('label', { class: 'fs-lbl' }, 'Who should be billed'), modeSel)); card.appendChild(el('div', { style: 'margin:10px 0' }, clsSel)); card.appendChild(selBox); drawChips(); if (pre && pre.id) { modeSel.value = 'sel'; selBox.style.display = 'block'; clsSel.style.display = 'none'; picked.push({ id: pre.id, name: pre.name || '(student)', cls: '' }); drawChips(); rsay('Student chosen: ' + (pre.name || '') + '. Press Preview.'); } card.appendChild(el('div', { class: 'fs-acts' }, pvBtn, goBtn, closeBtn)); card.appendChild(rmsg); card.appendChild(res);
       clear(runBox).appendChild(card); card.scrollIntoView && card.scrollIntoView({ block: 'nearest' });
     }
 
