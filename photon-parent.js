@@ -4,7 +4,8 @@
      1. An approved student opens Student Space > "Invite a parent" and makes a one-time code.
      2. The parent signs in to Student Space with their own Google account and types the code.
      3. The parent then sees ONLY their own child's published marks, homework and fees (read-only).
-   Privacy rules live in the database. A code works once and expires after 7 days.
+   Privacy rules live in the database. A code works once and does not expire. Once linked, nobody enters a code again.
+   A new link stays "waiting" until the student approves it; a student can have at most 3 parents.
    Student or admin can remove a link at any time. Needs photon-marks.js loaded first (shared charts).
    =================================================================== */
 (function () {
@@ -20,28 +21,41 @@
   function inviteCard() {
     var u = U(), el = u.el, card = el('div', { class: 'pm-card', id: 'pp-invite' }, el('h2', {}, 'Invite a parent'));
     var body = el('div', {}), msgBox = el('div', { class: 'pm-msg' });
-    card.appendChild(el('div', { class: 'pm-muted' }, 'Let a parent see your marks, homework and fees. Make a code and give it to them. They sign in here with their own Google account and type it in. Each code works once and lasts 7 days.'));
+    card.appendChild(el('div', { class: 'pm-muted' }, 'Let a parent see your marks, homework and fees. Make a code and give it to them. They sign in here with their own Google account and type it in. Each code works only once and stays valid until a parent uses it. After that the link stays for good, so nobody has to enter a code again. You can link up to 3 parents, and you approve each one first.'));
     card.appendChild(body); card.appendChild(msgBox);
     var btn = el('button', { type: 'button', class: 'pm-btn pri', style: 'margin-top:10px' }, 'Make a parent code');
     var codeBox = el('div', {}), linkBox = el('div', {});
     btn.onclick = async function () {
       btn.disabled = true; u.msg(msgBox, 'Making a code\u2026');
       var r = await sb().rpc('create_parent_code'); btn.disabled = false;
+      if (r.error && /3 parents/i.test(r.error.message || '')) return u.msg(msgBox, 'You already have 3 parents linked or waiting. Remove one first.', 'err');
       if (r.error || !r.data || !r.data[0]) return u.msg(msgBox, 'Could not make a code. Please try again.', 'err');
       u.msg(msgBox, ''); u.clear(codeBox);
       var d = r.data[0];
       codeBox.appendChild(el('div', { style: 'margin:12px 0;font-size:28px;font-weight:700;letter-spacing:3px;overflow-wrap:anywhere' }, fmtCode(d.code)));
-      codeBox.appendChild(el('div', { class: 'pm-muted' }, 'Valid until ' + u.fmtDate(String(d.expires_at).slice(0, 10)) + '. Only give it to your parent or guardian.'));
+      codeBox.appendChild(el('div', { class: 'pm-muted' }, 'Give this code only to your parent or guardian. It works once.'));
     };
     body.appendChild(btn); body.appendChild(codeBox); body.appendChild(linkBox);
     async function loadLinks() {
-      var r = await sb().from('parent_links').select('id,created_at'); u.clear(linkBox);
+      var r = await sb().rpc('student_parent_links'); u.clear(linkBox);
       if (r.error || !r.data || !r.data.length) return;
-      linkBox.appendChild(el('h3', {}, 'Linked parents (' + r.data.length + ')'));
-      r.data.forEach(function (l, i) {
-        var rm = el('button', { type: 'button', class: 'pm-btn bad' }, 'Remove');
-        rm.onclick = async function () { if (!window.confirm('Remove this parent\u2019s access to your marks, homework and fees?')) return; var d = await sb().from('parent_links').delete().eq('id', l.id); if (d.error) return u.msg(msgBox, 'Could not remove. Try again.', 'err'); loadLinks(); };
-        linkBox.appendChild(el('div', { class: 'pm-row' }, el('span', {}, 'Parent ' + (i + 1) + ' \u00B7 linked ' + u.fmtDate(String(l.created_at).slice(0, 10))), rm));
+      var waiting = r.data.filter(function (l) { return l.status === 'pending'; }).length;
+      linkBox.appendChild(el('h3', {}, 'Parents (' + r.data.length + ' of 3)'));
+      if (waiting) linkBox.appendChild(el('div', { class: 'pm-muted' }, 'Someone entered your code. Approve only people you know. Until you approve, they see nothing.'));
+      r.data.forEach(function (l) {
+        var who = (l.parent_name || 'A parent') + (l.parent_email ? ' (' + l.parent_email + ')' : '');
+        function decide(ok) {
+          return async function () {
+            if (!ok && !window.confirm(l.status === 'pending' ? 'Reject this request?' : 'Remove this parent\u2019s access to your marks, homework and fees?')) return;
+            var d = await sb().rpc('student_decide_parent', { p_link: l.id, p_approve: ok });
+            if (d.error) return u.msg(msgBox, 'Could not save. Please try again.', 'err'); u.msg(msgBox, ''); loadLinks();
+          };
+        }
+        var acts = el('span', { style: 'display:flex;gap:8px;flex-wrap:wrap' });
+        if (l.status === 'pending') { var ap = el('button', { type: 'button', class: 'pm-btn pri' }, 'Approve'); ap.onclick = decide(true); acts.appendChild(ap); }
+        var rm = el('button', { type: 'button', class: 'pm-btn bad' }, l.status === 'pending' ? 'Reject' : 'Remove'); rm.onclick = decide(false); acts.appendChild(rm);
+        var info = l.status === 'pending' ? 'Waiting for your approval' : 'Approved' + (l.last_viewed_at ? ' \u00B7 last viewed ' + u.fmtDate(String(l.last_viewed_at).slice(0, 10)) : ' \u00B7 not viewed yet');
+        linkBox.appendChild(el('div', { class: 'pm-row' }, el('span', {}, who, el('div', { class: 'pm-muted' }, info)), acts));
       });
     }
     loadLinks(); return card;
@@ -55,11 +69,22 @@
       if (inp.value.replace(/[^A-Za-z0-9]/g, '').length !== 8) return u.msg(msgBox, 'The code has 8 letters and numbers.', 'err');
       btn.disabled = true; u.msg(msgBox, 'Checking\u2026');
       var r = await sb().rpc('redeem_parent_code', { p_code: inp.value }); btn.disabled = false;
-      if (r.error) return u.msg(msgBox, /Too many/i.test(r.error.message || '') ? r.error.message : 'Something went wrong. Please try again.', 'err');
+      if (r.error) return u.msg(msgBox, /Too many|already has 3|own account/i.test(r.error.message || '') ? r.error.message : 'Something went wrong. Please try again.', 'err');
       if (!r.data || !r.data.length) return u.msg(msgBox, 'That code is not valid, or it has expired. Ask your child to make a new one.', 'err');
-      u.msg(msgBox, 'Linked to ' + (r.data[0].student_name || 'your child') + '.', 'ok'); inp.value = ''; onDone();
+      u.msg(msgBox, 'Request sent for ' + (r.data[0].student_name || 'your child') + '. Your child must approve it before you can see anything.', 'ok'); inp.value = ''; onDone();
     };
     return el('div', {}, el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px' }, inp, btn), msgBox);
+  }
+
+  /* ---------- parent: requests still waiting for the child to approve ---------- */
+  function pendingList() {
+    var u = U(), el = u.el, box = el('div', {});
+    sb().rpc('parent_pending_links').then(function (r) {
+      if (r.error || !r.data || !r.data.length) return;
+      box.appendChild(el('h3', {}, 'Waiting for approval'));
+      r.data.forEach(function (p) { box.appendChild(el('div', { class: 'pm-muted' }, (p.student_name || 'Your child') + ' has not approved yet. Ask them to open Student Space > Invite a parent and press Approve.')); });
+    }, function () { });
+    return box;
   }
 
   /* ---------- parent dashboard ---------- */
@@ -69,8 +94,10 @@
     var pick = u.sel(children.map(function (c) { return c.name + ' \u00B7 Class ' + c.class_name; }));
     if (children.length > 1) card.appendChild(el('div', { style: 'margin:10px 0' }, pick));
     card.appendChild(holder);
+    card.appendChild(pendingList());
     card.appendChild(el('details', { style: 'margin-top:14px' }, el('summary', { style: 'cursor:pointer;font-size:14px' }, 'Link another child'), codeForm(reload)));
     async function show(c) {
+      try { sb().rpc('parent_touch_view', { p_student: c.id }).then(function () { }, function () { }); } catch (e) { }
       u.clear(holder); holder.appendChild(el('h3', {}, c.name + ' \u00B7 Class ' + c.class_name + (c.board ? ' \u00B7 ' + c.board : '') + (c.division ? ' \u00B7 Div ' + c.division : '')));
       var mk = el('div', {}, el('div', { class: 'pm-muted' }, 'Loading marks\u2026')), hw = el('div', {}, el('div', { class: 'pm-muted' }, 'Loading homework\u2026')), fe = el('div', {}, el('div', { class: 'pm-muted' }, 'Loading fees\u2026'));
       holder.appendChild(mk); holder.appendChild(hw); holder.appendChild(fe);
@@ -151,8 +178,8 @@
           var d = await dashboard(r.data, reload); box.before(d); box.style.display = 'none';
         } else {
           var link = el('div', { class: 'pm-card', id: 'pp-link', style: 'max-width:620px;margin:16px auto' }, el('h2', {}, 'Are you a parent?'),
-            el('div', { class: 'pm-muted' }, 'Ask your child to open Student Space > "Invite a parent" and make a code. Then type it here to see their marks, homework and fees.'),
-            codeForm(function () { var o = root.querySelector('#pp-link'); if (o) o.remove(); busy = false; inject(); }));
+            el('div', { class: 'pm-muted' }, 'Ask your child to open Student Space > "Invite a parent" and make a code. Type it here, then your child approves you. After that you see their marks, homework and fees.'),
+            pendingList(), codeForm(function () { var o = root.querySelector('#pp-link'); if (o) o.remove(); busy = false; inject(); }));
           box.after(link);
         }
       } catch (e) { /* stay quiet: normal student sign-up page still works */ } finally { busy = false; }
