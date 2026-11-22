@@ -409,21 +409,17 @@ body[data-page="home"] .hdr-quick.hq-dup{display:none!important}
 <style id="role-css">html[data-role="parent"] #ss-root>.box{display:none}html[data-role="parent"] .stage,html[data-role="teacher"] .stage{display:none!important}</style>
 <style id="tbl-sticky">@media (max-width:920px){.tbl-unit{position:relative;max-width:100%}.tbl-bar:not([hidden]){position:sticky;bottom:calc(env(safe-area-inset-bottom,0px) + 4px);z-index:30;margin-top:6px;padding:4px 12px;border-radius:12px;background:rgba(14,24,48,.94);border:1px solid rgba(127,127,127,.35);box-shadow:0 6px 16px rgba(0,0,0,.35)}html[data-theme="light"] .tbl-bar:not([hidden]){background:rgba(255,255,255,.97);box-shadow:0 6px 16px rgba(15,27,51,.18)}}</style>
 <style id="hero-contrast-fix">
-/* Hero fixes (loaded last). Remove this whole block to undo.
-   1) the cursive "y" of Academy was cut off at the bottom: the gradient text only paints inside its line box, so give it room below
-   2) light mode: photo at full strength, text sits on a soft glass panel so it stays readable */
+/* Hero text fixes (loaded last). Remove this whole block to undo.
+   1) the cursive "y" of Academy was cut off at the bottom: the gradient text only paints inside its line box, so it gets room below
+   2) light mode: darker, bolder text with a thin soft white halo so it stays readable over the photo (photo and layout unchanged) */
 .hero-v2-title .t2{line-height:1.3!important;padding:.04em .14em .26em 0!important;margin-bottom:-.2em!important;overflow:visible!important}
 .hero-v2-brandtext{overflow:visible!important}
-html[data-theme="light"] .hero.hero-v2 .hero-bg-img{opacity:1!important;filter:saturate(1.08) contrast(1.04)!important}
-html[data-theme="light"] .hero.hero-v2 .hero-shade{background:linear-gradient(180deg,rgba(243,246,251,.55) 0%,rgba(243,246,251,0) 20%,rgba(243,246,251,0) 80%,rgba(243,246,251,.6) 100%)!important}
-html[data-theme="light"] .hero.hero-v2 .hero-v2-inner::before{content:"";position:absolute;z-index:-1;top:-18px;bottom:-18px;left:-16px;width:min(calc(100% + 32px),880px);border-radius:24px;background:rgba(255,255,255,.80);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);border:1px solid rgba(15,27,51,.14);box-shadow:0 14px 44px rgba(15,27,51,.22)}
-html[data-theme="light"] .hero.hero-v2 :is(.hero-v2-title .t1,.hero-v2 h1.hero-h1,h1.hero-h1){color:#0a1428!important}
-html[data-theme="light"] .hero.hero-v2 .hero-v2-sub{color:#18243f!important;font-weight:500}
-html[data-theme="light"] .hero.hero-v2 .hero-v2-tag{color:#26324f!important;font-weight:700}
-html[data-theme="light"] .hero.hero-v2 .hero-v2-title .t2{background:linear-gradient(90deg,#0a6580,#5a49d6)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}
-html[data-theme="light"] .hero.hero-v2 .hero-ask{color:#0a5f78!important}
-html[data-theme="light"] .hero.hero-v2 .pill{background:#fff!important;color:#14203a!important;border-color:rgba(15,27,51,.22)!important}
-@media (max-width:640px){html[data-theme="light"] .hero.hero-v2 .hero-v2-inner::before{left:-10px;width:calc(100% + 20px);top:-14px;bottom:-14px;border-radius:20px;background:rgba(255,255,255,.74)}}
+html[data-theme="light"] .hero.hero-v2 :is(.hero-v2-title .t1,h1.hero-h1){color:#050d1f!important;text-shadow:0 0 14px rgba(255,255,255,.95),0 0 4px rgba(255,255,255,.9),0 1px 2px rgba(255,255,255,.8)}
+html[data-theme="light"] .hero.hero-v2 .hero-v2-sub{color:#0b1530!important;font-weight:600;text-shadow:0 0 10px rgba(255,255,255,.95),0 0 3px rgba(255,255,255,.9)}
+html[data-theme="light"] .hero.hero-v2 .hero-v2-tag{color:#16213d!important;font-weight:800;text-shadow:0 0 8px rgba(255,255,255,.95)}
+html[data-theme="light"] .hero.hero-v2 .hero-v2-title .t2{background:linear-gradient(90deg,#064a63,#4a39c4)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;filter:drop-shadow(0 0 6px rgba(255,255,255,.9))}
+html[data-theme="light"] .hero.hero-v2 .hero-ask{color:#064e66!important;font-weight:700;text-shadow:0 0 8px rgba(255,255,255,.95)}
+html[data-theme="light"] .hero.hero-v2 .pill{background:#fff!important;color:#0b1530!important;border-color:rgba(15,27,51,.3)!important}
 </style>
 </head>
 <body>
